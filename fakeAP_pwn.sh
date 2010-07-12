@@ -131,7 +131,7 @@ function update() {
    #wget http://fakeap-pwn.googlecode.com/ fakeAP_pwn.tar.gz
 
    svn export -q --force http://fakeap-pwn.googlecode.com/svn/trunk/fakeAP_pwn.sh fakeAP_pwn.sh
-   echo -e "\e[01;36m[>]\e[00m Updated!" # Now using v$version_new."
+   echo -n -e "\e[01;36m[>]\e[00m Updated to " && svn info | grep Revision: | awk '{print }'
    exit 2
 }
 #----------------------------------------------------------------------------------------------#
