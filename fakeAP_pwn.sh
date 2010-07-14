@@ -571,6 +571,7 @@ if test -e /etc/apache2/sites-available/fakeAP_pwn; then rm /etc/apache2/sites-a
 echo "<VirtualHost *:80>
 	ServerAdmin webmaster@localhost
 	DocumentRoot $htdocsPath
+	ServerName "10.0.0.1"
 	<Directory />
 		Options FollowSymLinks
 		AllowOverride None
@@ -591,6 +592,7 @@ echo "<VirtualHost *:80>
 <VirtualHost _default_:443>
 	ServerAdmin webmaster@localhost
 	DocumentRoot $htdocsPath
+	ServerName "10.0.0.1"
 	<Directory />
 		Options FollowSymLinks
 		AllowOverride None
