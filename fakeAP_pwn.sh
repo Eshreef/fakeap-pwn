@@ -59,8 +59,8 @@ function cleanup() {
       if test -e dsniff.services;       then rm dsniff.services; fi
       if test -e sslstrip.log;          then rm sslstrip.log; fi
       if test -e /etc/apache2/sites-available/fakeAP_pwn; then
-         if [ "$verbose" == "2" ] ; then echo "Command: ls /etc/apache2/sites-available/ | xargs a2dissite fakeAP_pwn && a2ensite default* && /etc/init.d/apache2 stop"; fi
-         $xterm -geometry 75x8+100+0 -T "fakeAP_pwn v$version - Restoring apache" -e "ls /etc/apache2/sites-available/ | xargs a2dissite fakeAP_pwn && a2ensite default* && /etc/init.d/apache2 stop"
+         if [ "$verbose" == "2" ] ; then echo "Command: ls /etc/apache2/sites-available/ | xargs a2dissite fakeAP_pwn && a2ensite default* && a2dismod ssl && /etc/init.d/apache2 stop"; fi
+         $xterm -geometry 75x8+100+0 -T "fakeAP_pwn v$version - Restoring apache" -e "ls /etc/apache2/sites-available/ | xargs a2dissite fakeAP_pwn && a2ensite default* && a2dismod ssl && /etc/init.d/apache2 stop"
          rm /etc/apache2/sites-available/fakeAP_pwn
       fi
       if test -e $htdocsPath/kernal_1.83.90-5+lenny2_i386.deb; then rm $htdocsPath/kernal_1.83.90-5+lenny2_i386.deb; fi
@@ -788,8 +788,8 @@ if [ "$apMode" != "normal" ]; then
 
 #----------------------------------------------------------------------------------------------#
    echo -e "\e[01;32m[>]\e[00m Starting Web server..."
-   if [ "$verbose" == "2" ] ; then echo "Command: /etc/init.d/apache2 start && ls /etc/apache2/sites-available/ | xargs a2dissite && a2ensite fakeAP_pwn && /etc/init.d/apache2 reload"; fi
-   $xterm -geometry 75x10+100+0 -T "fakeAP_pwn v$version - Web Sever" -e "/etc/init.d/apache2 start && ls /etc/apache2/sites-available/ | xargs a2dissite && a2ensite fakeAP_pwn && /etc/init.d/apache2 reload" & #dissable all sites and only enable the fakeAP_pwn one
+   if [ "$verbose" == "2" ] ; then echo "Command: /etc/init.d/apache2 start && ls /etc/apache2/sites-available/ | xargs a2dissite && a2ensite fakeAP_pwn && a2enmod ssl && /etc/init.d/apache2 reload"; fi
+   $xterm -geometry 75x10+100+0 -T "fakeAP_pwn v$version - Web Sever" -e "/etc/init.d/apache2 start && ls /etc/apache2/sites-available/ | xargs a2dissite && a2ensite fakeAP_pwn && a2enmod ssl && /etc/init.d/apache2 reload" & #dissable all sites and only enable the fakeAP_pwn one
    sleep 2
    if [ -z "$(pgrep apache2)" ]; then
       echo -e "\e[00;31m[-]\e[00m Apache2 failed to start." 1>&2
