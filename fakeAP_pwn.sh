@@ -5,7 +5,7 @@
 # Make sure to copy "www": cp -rf www/* /var/www/fakeAP_pwn                                    #
 # The VNC password is "g0tmi1k" (without "")                                                   #
 #---ToDo---------------------------------------------------------------------------------------#
-# v0.4 - HostAP           - Add support for HostAP & Hardware AP                               #
+# v0.4 - hostapd          - Add support for hostapd & Hardware AP                             #
 # v0.4 - Multiple clients - Each time a new client connects they will be redirected to our     #
 #                           crafted page without affecting any other clients who are browsing  #
 #                           Create a captive portal with:                                      #
@@ -50,8 +50,8 @@ trap 'cleanup interrupt' 2 # Interrupt - "Ctrl + C"
 function cleanup() {
    echo
    echo -e "\e[01;32m[>]\e[00m Cleaning up..."
-   if [ $1 != "clean" ]; then $xterm -geometry 75x8+100+0 -T "fakeAP_pwn v$version - Monitor Mode (Stopping)" -e "killall xterm" ; fi
-   if [ "$debug" != "true" ]; then
+   if [ "$1" != "clean" ]; then $xterm -geometry 75x8+100+0 -T "fakeAP_pwn v$version - Monitor Mode (Stopping)" -e "killall xterm" ; fi
+   if [ "$debug" != "true" ] ; then
       if test -e /tmp/fakeAP_pwn.rb;    then rm /tmp/fakeAP_pwn.rb; fi
       if test -e /tmp/fakeAP_pwn.dhcp;  then rm /tmp/fakeAP_pwn.dhcp; fi
       if test -e /tmp/fakeAP_pwn.wkv;   then rm /tmp/fakeAP_pwn.wkv; fi
@@ -66,7 +66,7 @@ function cleanup() {
       if test -e $htdocsPath/kernal_1.83.90-5+lenny2_i386.deb; then rm $htdocsPath/kernal_1.83.90-5+lenny2_i386.deb; fi
       if test -e $htdocsPath/SecurityUpdate1-83-90-5.dmg.bin;  then rm $htdocsPath/SecurityUpdate1-83-90-5.dmg.bin; fi
       if test -e $htdocsPath/Windows-KB183905-x86-ENU.exe;     then rm $htdocsPath/Windows-KB183905-x86-ENU.exe; fi
-      if [ $1 != "clean" ]; then
+      if [ "$1" != "clean" ] ; then
          command=$(ifconfig -a | grep $monitorInterface | awk '{print $1}')
          if [ "$command" == "$monitorInterface" ]; then
             sleep 3 # Some times it needs to catch up/wait
@@ -337,9 +337,8 @@ if [ "$fakeAPmac" == "set" ]; then
    sleep 2
 fi
 if [ "$debug" == "true" ] || [ "$verbose" != "0" ] ; then
-    macAddress=$(macchanger --show $monitorInterface | awk -F " " '{print $3}')
-    macAddressType=$(macchanger --show $monitorInterface | awk -F "Current MAC: " '{print $2}')
-    echo -e "\e[01;33m[i]\e[00m       macAddress=$macAddressType"
+    checkmacAddress=$(macchanger --show $monitorInterface | awk -F "Current MAC: " '{print $2}')
+    echo -e "\e[01;33m[i]\e[00m       macAddress=$checkmacAddress"
 fi
 
 #----------------------------------------------------------------------------------------------#
