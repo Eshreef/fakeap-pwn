@@ -913,9 +913,12 @@ sleep 1
         echo -e "\e[00;31m[-]\e[00m Can't enable ip_forward" 1>&2
         cleanup
       fi
-      iptables --table nat --append POSTROUTING --out-interface $interface --jump MASQUERADE
-      iptables --append FORWARD --in-interface $whichinterface -j ACCEPT
-      iptables --table nat --append PREROUTING --proto udp --jump DNAT --to $gatewayIP
+iptables --table nat --append POSTROUTING -s 10.0.0.0/24 --out-interface $interface --jump MASQUERADE     
+   iptables -A FORWARD -s 10.0.0.0/24 -o $interface -j ACCEPT
+   iptables -A FORWARD -d 10.0.0.0/24 -m conntrack --ctstate ESTABLISHED,RELATED -i $interface -j ACCEPT
+   iptables --append FORWARD --in-interface $whichinterface --jump ACCEPT                                 
+   iptables --table nat --append PREROUTING --proto udp --jump DNAT --to $gatewayIP           
+   iptables -A OUTPUT -s 10.0.0.0/24 -i $interface -d $gatewayIP -p all -j DROP
    fi
 
 #----------------------------------------------------------------------------------------------#
