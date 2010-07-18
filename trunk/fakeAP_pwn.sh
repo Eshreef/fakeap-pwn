@@ -857,7 +857,7 @@ sleep 1
    if [ "$verbose" != "0" ]; then echo -e "\e[01;33m[i]\e[00m Target's IP = $targetIP"; fi
 
 #----------------------------------------------------------------------------------------------#
-   if [ "$apMode" == "true" ]; then
+   if [ "$apMode" == "transparent" ]; then
       echo -e "\e[01;32m[>]\e[00m Give our target their inter-webs back..."
       iptables --flush
       iptables --table nat --flush
