@@ -879,8 +879,8 @@ echo -e "\e[01;32m[>]\e[00m Forcing target to vist our site..."
 if [ "$verbose" == "2" ] ; then echo "Command: iptables -t nat -A PREROUTING -i $whichinterface -p tcp --dport 80 -j DNAT --to-destination 10.0.0.1"; fi
 if [ "$verbose" == "2" ] ; then echo "Command: iptables -t nat -A PREROUTING -i $whichinterface -p tcp --dport 443 -j DNAT --to-destination 10.0.0.1"; fi
 iptables -A INPUT -p udp -i $whichinterface --sport 53 --dport 1024:65535 -j ACCEPT
-iptables -A INPUT -j ACCEPT -i $whichinterface -p tcp --dport 80 --sport 1024:65535
-iptables -A INPUT -j ACCEPT -i $whichinterface -p tcp --dport 443 --sport 1024:65535
+iptables -A INPUT -p tcp -i $whichinterface --dport 80 --sport 1024:65535 -j ACCEPT
+iptables -A INPUT -p tcp -i $whichinterface --dport 443 --sport 1024:65535 -j ACCEPT
 iptables -A INPUT -p tcp -i $whichinterface --dport $port --sport 1024:65535 -j ACCEPT
 iptables -A INPUT -p udp -i $whichinterface --dport $port --sport 1024:65535 -j ACCEPT
 iptables -A INPUT -i $whichinterface -j DROP # drop all other traffic
