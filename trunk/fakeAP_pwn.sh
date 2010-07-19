@@ -879,7 +879,7 @@ echo -e "\e[01;32m[>]\e[00m Forcing target to vist our site..."
 if [ "$verbose" == "2" ] ; then echo "Command: iptables -t nat -A PREROUTING -i $whichinterface -p tcp --dport 80 -j DNAT --to-destination 10.0.0.1"; fi
 if [ "$verbose" == "2" ] ; then echo "Command: iptables -t nat -A PREROUTING -i $whichinterface -p tcp --dport 443 -j DNAT --to-destination 10.0.0.1"; fi
 iptables -A INPUT -p udp -i $whichinterface --dport 53 -j ACCEPT
-iptables -A INPUT -p tcp -i $whichinterface --dport 80  -j ACCEPT
+iptables -A INPUT -p tcp -i $whichinterface --dport 80 -j ACCEPT
 iptables -A INPUT -p tcp -i $whichinterface --dport 443 -j ACCEPT
 iptables -A INPUT -p tcp -i $whichinterface --dport $port -j ACCEPT
 iptables -A INPUT -p udp -i $whichinterface --dport $port -j ACCEPT
@@ -924,7 +924,7 @@ sleep 1
       iptables -A FORWARD -d 10.0.0.0/24 -m conntrack --ctstate ESTABLISHED,RELATED -i $interface -j ACCEPT
       iptables --append FORWARD --in-interface $whichinterface --jump ACCEPT                                 
       iptables --table nat --append PREROUTING --proto udp --jump DNAT --to $gatewayIP           
-      iptables -A INPUT -s 10.0.0.0/24 -i $interface -d $gatewayIP -p all -j DROP  #protect our gateway
+      iptables -A INPUT -m iprange --src-range 10.0.0.150-10.0.0.250 -i $interface -d $gatewayIP -p all -j DROP  #protect our gateway
    fi
 
 #----------------------------------------------------------------------------------------------#
