@@ -1,6 +1,6 @@
 #!/bin/bash                                                                                    #
 # (C)opyright 2010 - g0tmi1k & joker5bb                                                        #
-# fakeAP_pwn.sh (v0.3-RC46 2010-07-23)                                                         #
+# fakeAP_pwn.sh (v0.3-RC48 2010-07-23)                                                         #
 #---Important----------------------------------------------------------------------------------#
 # Make sure to copy "www": cp -rf www/* /var/www/fakeAP_pwn                                    #
 # The VNC password is "g0tmi1k" (without "")                                                   #
@@ -21,6 +21,7 @@
 #---Dump Pad-----------------------------------------------------------------------------------#
 # use vnc.rb                                                                                   #
 # not sure if MTU is working                                                                   #
+# ****************** METAPLOIT DOESNT WORK FOR A RANDOM REASON ******************              #
 #---Defaults-----------------------------------------------------------------------------------#
 export            ESSID="Free-WiFi"                  # WiFi Name to use
 export    fakeAPchannel=1                            # Channel to use
