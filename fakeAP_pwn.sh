@@ -89,9 +89,7 @@ function cleanup() {
    if [ "$apMode" == "non" ] ; then # Else will will remove their internet access!
       if [ `echo route | egrep "10.0.0.0"` ] ; then route del -net 10.0.0.0 netmask 255.255.255.0 gw 10.0.0.1; fi
       iptables --flush
-      iptables --table filter --delete-chain
-      iptables --table nat --delete-chain
-      iptables --table mangle --delete-chain
+      iptables --delete-chain
       echo 0 > /proc/sys/net/ipv4/ip_forward
    fi
 
@@ -937,9 +935,7 @@ ifconfig $apInterface 10.0.0.1 netmask 255.255.255.0
 ifconfig $apInterface mtu $mtu
 route add -net 10.0.0.0 netmask 255.255.255.0 gw 10.0.0.1 
 iptables --flush
-iptables --table filter --delete-chain
-iptables --table nat --delete-chain
-iptables --table mangle --delete-chain
+iptables --delete-chain
 echo 1 > /proc/sys/net/ipv4/ip_forward
 command=$(cat /proc/sys/net/ipv4/ip_forward)
 if [ $command != "1" ] ; then
@@ -1094,9 +1090,7 @@ fi
    if [ "$apMode" == "transparent" ] ; then
       echo -e "\e[01;32m[>]\e[00m Give our target their inter-webs back..."
       iptables --flush
-      iptables --table filter --delete-chain
-      iptables --table nat --delete-chain
-      iptables --table mangle --delete-chain
+      iptables --delete-chain
       echo 1 > /proc/sys/net/ipv4/ip_forward
       command=$(cat /proc/sys/net/ipv4/ip_forward)
       if [ $command != "1" ] ; then
