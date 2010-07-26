@@ -90,6 +90,7 @@ function cleanup() {
       if [ `echo route | egrep "10.0.0.0"` ] ; then route del -net 10.0.0.0 netmask 255.255.255.0 gw 10.0.0.1; fi
       iptables --flush
       iptables --delete-chain
+      iptables --zero
       echo 0 > /proc/sys/net/ipv4/ip_forward
    fi
 
@@ -837,7 +838,7 @@ logger_stdout_level=2
 dump_file=/tmp/hostapd.dump
 ctrl_interface=/var/run/hostapd
 ctrl_interface_group=0
-ssid=\"$ESSID\"
+ssid=$ESSID
 hw_mode=g
 channel=$fakeAPchannel
 beacon_int=100
@@ -936,6 +937,7 @@ ifconfig $apInterface mtu $mtu
 route add -net 10.0.0.0 netmask 255.255.255.0 gw 10.0.0.1 
 iptables --flush
 iptables --delete-chain
+iptables --zero
 echo 1 > /proc/sys/net/ipv4/ip_forward
 command=$(cat /proc/sys/net/ipv4/ip_forward)
 if [ $command != "1" ] ; then
@@ -945,7 +947,7 @@ fi
 if [ "$apMode" == "normal" ] ; then
    iptables --table nat --append POSTROUTING --out-interface $interface --jump MASQUERADE
    iptables --append FORWARD --in-interface $apInterface --jump ACCEPT
-   iptables --table nat --append PREROUTING --proto udp --destination-port 53 --jump DNAT --to $gatewayIP
+   iptables --table nat --append PREROUTING --proto udp --destination-port 53 --jump DNAT --to-destination $gatewayIP
       #iptables --table nat --append POSTROUTING -s 10.0.0.0/24 --out-interface $interface --jump MASQUERADE
       #iptables -A FORWARD -s 10.0.0.0/24 -o $interface -j ACCEPT
       #iptables -A FORWARD -d 10.0.0.0/24 -m conntrack --ctstate ESTABLISHED,RELATED -i $interface -j ACCEPT
@@ -1091,6 +1093,7 @@ fi
       echo -e "\e[01;32m[>]\e[00m Give our target their inter-webs back..."
       iptables --flush
       iptables --delete-chain
+      iptables --zero
       echo 1 > /proc/sys/net/ipv4/ip_forward
       command=$(cat /proc/sys/net/ipv4/ip_forward)
       if [ $command != "1" ] ; then
@@ -1107,7 +1110,7 @@ fi
 #      Temp fix till the above stuff works.
       iptables --table nat --append POSTROUTING --out-interface $interface --jump MASQUERADE
       iptables --append FORWARD --in-interface $apInterface --jump ACCEPT
-      iptables --table nat --append PREROUTING --proto udp --destination-port 53 --jump DNAT --to $gatewayIP
+      iptables --table nat --append PREROUTING --proto udp --destination-port 53 --jump DNAT --to-destination $gatewayIP
    fi
 
 #----------------------------------------------------------------------------------------------#
