@@ -1,6 +1,6 @@
 #!/bin/bash                                                                                    #
 # (C)opyright 2010 - g0tmi1k & joker5bb                                                        #
-# fakeAP_pwn.sh v0.3 (Beta-#58 2010-07-28)                                                     #
+# fakeAP_pwn.sh v0.3 (Beta-#59 2010-07-28)                                                     #
 #---Important----------------------------------------------------------------------------------#
 # Make sure to copy "www": cp -rf www/* /var/www/fakeAP_pwn                                    #
 # The VNC password is "g0tmi1k" (without "")                                                   #
@@ -43,7 +43,7 @@ apMode=transparent
 payload=wkv
 backdoorPath=/root/backdoor.exe
 
-# The directory location to the crafted web page. No trailing slash.
+# The directory location to the crafted web page.
 www=/var/www/fakeAP_pwn
 
 # If your having "timing out" problems, change this.
@@ -65,10 +65,11 @@ diagnostics=false
 verbose=0
 
 #---Variables----------------------------------------------------------------------------------#
-export gatewayIP=`route -n | awk '/^0.0.0.0/ {getline; print $2}'`
-export     ourIP=`ifconfig $interface | awk '/inet addr/ {split ($2,A,":"); print A[2]}'`
-export      port=`shuf -i 2000-65000 -n 1`
-export   version="0.3 (Beta-#58)"
+gatewayIP=$(route -n | awk '/^0.0.0.0/ {getline; print $2}')
+    ourIP=$(ifconfig $interface | awk '/inet addr/ {split ($2,A,":"); print A[2]}')
+     port=$(shuf -i 2000-65000 -n 1)
+  version="0.3 (Beta-#59)"
+      www="${www%/}"
 trap 'cleanup interrupt' 2 # Interrupt - "Ctrl + C"
 
 #----Functions---------------------------------------------------------------------------------#
@@ -123,26 +124,29 @@ function cleanup() {
 function help() {
    echo "(C)opyright 2010 g0tmi1k & joker5bb ~ http://g0tmi1k.blogspot.com
 
- Usage: bash fakeAP_pwn.sh -e [essid] -c [channel] -i [interface] -w [interface] -m [interface]
-             -y [airbase-ng/hostapd] -p [sbd/vnc/other] -b [/path] -h [/path] -t [MTU]
-             -o [normal/transparent/non] -r (-z / -a [mac address]) -e -d -v -V [-u] [-?]
+ Usage: bash fakeAP_pwn.sh -i [interface] -w [interface] -m [interface] -e [essid] -c [channel]
+              -y [airbase-ng/hostapd] -o [normal/transparent/non] -p [sbd/vnc/other] -b [/path]
+              -h [/path] -t [MTU] -r (-z / -a [mac address]) -e -d -v -V [-u] [-?]
 
  Common options:
-   -e  ---  WiFi Name e.g. Free-WiFi
-   -c  ---  Set the channel for the FakeAP to run on e.g. 6
-
    -i  ---  Internet Interface (which inferface to use - check with ifconfig)  e.g. eth0
    -w  ---  WiFi Interface (which inferface to use - check with ifconfig)  e.g. wlan0
    -m  ---  Monitor Interface (which inferface to use - check with ifconfig)  e.g. mon0
-[*]-y  ---  airbase-ng/hostapd. What software to use for the FakeAP [*]
+
+   -e  ---  WiFi Name e.g. Free-WiFi
+   -c  ---  Set the channel for the FakeAP to run on e.g. 6
+
+[*]-y  ---  airbase-ng/hostapd. What software to use for the FakeAP
+
+   -o  ---  Ap Mode. normal/transparent/nontransparent e.g. transparent
 
    -p  ---  Payload (sbd/vnc/wkv/other) e.g. vnc
    -b  ---  Backdoor Path (only used when payload is set to other) e.g. /path/to/backdoor.exe
-   -h  ---  htdocs path e.g. /var/www/fakeAP_pwn. (No trailing slash.)
 
+   -h  ---  htdocs path e.g. /var/www/fakeAP_pwn
    -t  ---  Maximum Transmission Unit - If your having timing out problems, change this. e.g. 1500
-   -o  ---  Ap Mode. normal/transparent/nontransparent e.g. transparent
    -r  ---  Respond to every probe request
+
    -z  ---  Randomizes the MAC Address of the FakeAP
    -a  ---  Use this MAC Address. e.g. 00:05:7c:9a:58:3f
 
@@ -150,7 +154,9 @@ function help() {
    -d  ---  Debug Mode (Doesn't close any pop up windows)
    -v  ---  Verbose mode (Displays infomation)
    -V  ---  (Higher) Verbose mode (Displays infomation + commands)
+
    -u  ---  Update fakeAP_pwn
+
    -?  ---  This screen
 
  Known issues:
@@ -207,19 +213,19 @@ function testAP() {
 #----------------------------------------------------------------------------------------------#
 echo -e "\e[01;36m[*]\e[00m fakeAP_pwn v$version"
 
-while getopts "e:c:i:w:m:y:p:b:h:t:o:rz:a:xdDvVu?" OPTIONS; do
+while getopts "i:w:m:e:c:y:o:p:b:h:t:rz:a:xdDvVu?" OPTIONS; do
   case ${OPTIONS} in
-    e     ) export ESSID=$OPTARG;;
-    c     ) export fakeAPchannel=$OPTARG;;
     i     ) export interface=$OPTARG;;
     w     ) export wifiInterface=$OPTARG;;
     m     ) export monitorInterface=$OPTARG;;
+    e     ) export ESSID=$OPTARG;;
+    c     ) export fakeAPchannel=$OPTARG;;
     y     ) export apType=$OPTARG;;
+    o     ) export apMode=$OPTARG;;
     p     ) export payload=$OPTARG;;
     b     ) export backdoorPath=$OPTARG;;
     h     ) export www=$OPTARG;;
     t     ) export mtu=$OPTARG;;
-    o     ) export apMode=$OPTARG;;
     r     ) export respond2All="true";;
     z     ) export fakeAPmac=$OPTARG;;
     a     ) export macAddress=$OPTARG;;
@@ -284,18 +290,18 @@ if test -e /tmp/fakeAP_pwn.wkv; then rm /tmp/fakeAP_pwn.wkv; fi
 if test -e fakeAP_pwn.output;   then rm fakeAP_pwn.output; fi
 
 if [ "$debug" == "true" ] || [ "$verbose" != "0" ] ; then
-    echo -e "\e[01;33m[i]\e[00m            ESSID=$ESSID
-\e[01;33m[i]\e[00m    fakeAPchannel=$fakeAPchannel
-\e[01;33m[i]\e[00m        interface=$interface
+    echo -e "\e[01;33m[i]\e[00m        interface=$interface
 \e[01;33m[i]\e[00m    wifiInterface=$wifiInterface
 \e[01;33m[i]\e[00m monitorInterface=$monitorInterface
-\e[01;33m[i]\e[00m           apType=$apType
 \e[01;33m[i]\e[00m      apInterface=$apInterface
+\e[01;33m[i]\e[00m            ESSID=$ESSID
+\e[01;33m[i]\e[00m    fakeAPchannel=$fakeAPchannel
+\e[01;33m[i]\e[00m           apType=$apType
+\e[01;33m[i]\e[00m           apMode=$apMode
 \e[01;33m[i]\e[00m          payload=$payload
 \e[01;33m[i]\e[00m     backdoorPath=$backdoorPath
 \e[01;33m[i]\e[00m              www=$www
 \e[01;33m[i]\e[00m              mtu=$mtu
-\e[01;33m[i]\e[00m           apMode=$apMode
 \e[01;33m[i]\e[00m      respond2All=$respond2All
 \e[01;33m[i]\e[00m        fakeAPmac=$fakeAPmac
 \e[01;33m[i]\e[00m           extras=$extras
@@ -311,17 +317,18 @@ if [ "$diagnostics" == "true" ] ; then
     echo "fakeAP_pwn v$version
 $(date)
 -Variables-------------------------------
-    fakeAPchannel=$fakeAPchannel
         interface=$interface
     wifiInterface=$wifiInterface
  monitorInterface=$monitorInterface
-           apType=$apType
       apInterface=$apInterface
+            ESSID=$ESSID
+    fakeAPchannel=$fakeAPchannel
+           apType=$apType
+           apMode=$apMode
           payload=$payload
      backdoorPath=$backdoorPath
               www=$www
               mtu=$mtu
-           apMode=$apMode
       respond2All=$respond2All
         fakeAPmac=$fakeAPmac
            extras=$extras
