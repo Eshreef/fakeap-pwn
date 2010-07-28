@@ -176,20 +176,19 @@ function update() {
    #wget http://fakeap-pwn.googlecode.com/ fakeAP_pwn.tar.gz
    if test -e /usr/bin/svn ; then
       echo -e "\e[01;33m[>]\e[00m Checking for update..."
-      update=$(svn info http://fakeap-pwn.googlecode.com/svn/ | grep Revision: | awk '{print }')
-      if [ "$update" != "0.3 (Beta-#$version)" ] ; then
+      update=$(svn info http://fakeap-pwn.googlecode.com/svn/ | grep "Revision:" |cut -c11-)
+      if [ "$version" != "0.3 (Beta-#$update)" ] ; then
          echo -e "\e[01;33m[i]\e[00m Updating..."
          svn export -q --force http://fakeap-pwn.googlecode.com/svn/trunk/fakeAP_pwn.sh fakeAP_pwn.sh
          echo -ne "\e[01;36m[>]\e[00m Updated to $update. (="
       else
-         echo -e "\e[01;33m[i]\e[00m You are using the latest version. (="
+         echo -e "\e[01;33m[i]\e[00m You're using the latest version. (="
       fi
    else
          echo -e "\e[01;33m[i]\e[00m Updating..."
          wget -nv -N http://fakeap-pwn.googlecode.com/svn/trunk/fakeAP_pwn.sh
-         echo -e "\e[01;33m[i]\e[00m Updated!"
+         echo -e "\e[01;33m[i]\e[00m Updated! (="
    fi
-   echo
    exit 2
 }
 
