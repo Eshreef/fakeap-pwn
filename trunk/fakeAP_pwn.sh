@@ -1,6 +1,6 @@
 #!/bin/bash                                                                                    #
 # (C)opyright 2010 - g0tmi1k & joker5bb                                                        #
-# fakeAP_pwn.sh v0.3 (Beta-#64 2010-07-28)                                                     #
+# fakeAP_pwn.sh v0.3 (Beta-#65 2010-07-28)                                                     #
 #---Important----------------------------------------------------------------------------------#
 # Make sure to copy "www": cp -rf www/* /var/www/fakeAP_pwn                                    #
 # The VNC password is "g0tmi1k" (without "")                                                   #
@@ -71,7 +71,7 @@ verbose=0
 gatewayIP=$(route -n | awk '/^0.0.0.0/ {getline; print $2}')
     ourIP=$(ifconfig $interface | awk '/inet addr/ {split ($2,A,":"); print A[2]}')
      port=$(shuf -i 2000-65000 -n 1)
-  version="0.3 (Beta-#64)"
+  version="0.3 (Beta-#65)"
       www="${www%/}"
 trap 'cleanup interrupt' 2 # Interrupt - "Ctrl + C"
 
@@ -1134,6 +1134,8 @@ if [ "$apType" == "airbase-ng" ] ; then
    loopMain="False"
    i="1"
    for i in {1..3} ; do # Main Loop
+      killall airbase-ng 2>/dev/null # Start fresh...
+      sleep 1
       command="airbase-ng $monitorInterface -a $macAddress -W 0 -y -c $fakeAPchannel -e \"$ESSID\""
       if [ "$respond2All" == "true" ] ; then command="$command -P -C 60"; fi
       if [ "$debug" == "true" ] || [ "$verbose" != "0" ] ; then command="$command -v"; fi
@@ -1173,8 +1175,6 @@ if [ "$apType" == "airbase-ng" ] ; then
          if [ "$verbose" == "2" ] ; then echo "Command: killall xterm"; fi; if [ "$diagnostics" == "true" ] ; then echo "killall xterm" >> fakeAP_pwn.output; fi
          cleanup
       fi
-   sleep 1
-   killall airbase-ng # Start fresh...
    sleep 3
    done # Main Loop
    if [ $loopMain == "False" ] ; then
