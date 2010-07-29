@@ -1179,7 +1179,7 @@ if [ "$apType" == "airbase-ng" ] ; then
    done # Main Loop
    if [ $loopMain == "False" ] ; then
       echo -e "\e[00;31m[-]\e[00m Couldn't detect the fake access point." 1>&2
-      cleanup
+      #cleanup
    fi
 elif [ "$apType" == "hostapd" ] ; then
    command="hostapd /tmp/fakeAP_pwn.hostapd"
