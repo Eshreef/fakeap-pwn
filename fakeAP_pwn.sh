@@ -1,6 +1,6 @@
 #!/bin/bash                                                                                    #
 # (C)opyright 2010 - g0tmi1k & joker5bb                                                        #
-# fakeAP_pwn.sh v0.3 (Beta-#65 2010-07-28)                                                     #
+# fakeAP_pwn.sh v0.3 (Beta-#66 2010-07-29)                                                     #
 #---Important----------------------------------------------------------------------------------#
 # Make sure to copy "www": cp -rf www/* /var/www/fakeAP_pwn                                    #
 # The VNC password is "g0tmi1k" (without "")                                                   #
@@ -71,7 +71,7 @@ verbose=0
 gatewayIP=$(route -n | awk '/^0.0.0.0/ {getline; print $2}')
     ourIP=$(ifconfig $interface | awk '/inet addr/ {split ($2,A,":"); print A[2]}')
      port=$(shuf -i 2000-65000 -n 1)
-  version="0.3 (Beta-#65)"
+  version="0.3 (Beta-#66)"
       www="${www%/}"
 trap 'cleanup interrupt' 2 # Interrupt - "Ctrl + C"
 
@@ -1150,7 +1150,7 @@ if [ "$apType" == "airbase-ng" ] ; then
       else
          command=$(iwconfig $interface 2>/dev/null | grep "802.11" | cut -d" " -f1)
          if [ ! $command ]; then loopMain="True"; break; fi # $interface isnt WiFi, therefore cant test.
-         echo -e "\e[01;33m[i]\e[00m Attempt #$x to detect the fake access point."
+         echo -e "\e[01;33m[i]\e[00m Attempt #$i to detect the fake access point."
          loopSub="False"
          x="1"
          for x in {1..5} ; do # Sub loop
