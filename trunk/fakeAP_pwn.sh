@@ -1240,9 +1240,6 @@ $xterm -geometry 75x7+100+0 -T "fakeAP_pwn v$version - DHCP" -e "$command"
 command="touch /var/lib/dhcp3/dhcpd.leases"
 if [ "$verbose" == "2" ] ; then echo "Command: $command" ; fi; if [ "$diagnostics" == "true" ] ; then echo "$command" >> fakeAP_pwn.output; fi
 $xterm -geometry 75x7+100+0 -T "fakeAP_pwn v$version - DHCP" -e "$command"
-if [ -e /etc/apparmor.d/usr.sbin.dhcpd3 ] ; then
-   /etc/apparmor.d/usr.sbin.dhcpd3 <- ubuntu only
-fi
 if [ -e /etc/apparmor.d/usr.sbin.dhcpd3 ] ; then # ubuntu - Fixes folder persmissions
    if [ -e /etc/apparmor.d/usr.sbin.dhcpd3.bkup ]       ; then rm /etc/apparmor.d/usr.sbin.dhcpd3.bkup; fi
    if [ -e /etc/apparmor.d/usr.sbin.dhcpd3.fakeAP_pwn ] ; then rm /etc/apparmor.d/usr.sbin.dhcpd3.fakeAP_pwn; fi
