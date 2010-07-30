@@ -297,9 +297,9 @@ $(date)
 fi
 
 if [ "$debug" == "true" ] ; then
-   echo -e "\e[01;33m[i]\e[00m Debug Mode\e[00m"
+   echo -e "\e[01;33m[i]\e[00m Debug mode\e[00m"
 elif [ "$diagnostics" == "true" ] ; then
-   echo -e "\e[01;34m[i]\e[00m Diagnostics Mode\e[00m"
+   echo -e "\e[01;34m[i]\e[00m Diagnostics mode\e[00m"
 fi
 
 if [ "$wifiInterface" == "" ] ; then echo -e "\e[00;31m[-]\e[00m wifiInterface can't be blank" 1>&2; cleanup; fi
@@ -404,13 +404,13 @@ if [ "$diagnostics" == "true" ] ; then
     if [ "$apMode" != "non" ] ; then
         echo "-Ping------------------------------------" >> fakeAP_pwn.log
         echo -e "\e[01;34m[i]\e[00m ping -I $interface -c 4 $ourIP"
-        ping -I $interface -c 4 $ourIP >> fakeAP_pwn.log
+        action "Ping" "ping -I $interface -c 4 $ourIP" $verbose $diagnostics "true" $debug
         echo "-----------------------------------------" >> fakeAP_pwn.log
         echo -e "\e[01;34m[i]\e[00m ping -I $interface -c 4 $gatewayIP"
-        ping -I $interface -c 4 $gatewayIP >> fakeAP_pwn.log
+        action "Ping" "ping -I $interface -c 4 $gatewayIP" $verbose $diagnostics "true" $debug
         echo "-----------------------------------------" >> fakeAP_pwn.log
         echo -e "\e[01;34m[i]\e[00m ping -I $interface -c 4 google.com"
-        command=$(ping -I $interface -c 4 google.com >> fakeAP_pwn.log)
+        command=$(ping -I $interface -c 4 google.com >/dev/null >> fakeAP_pwn.log)
         if eval $command; then
            echo "-->Active Internet connection" >> fakeAP_pwn.log
         else
@@ -607,20 +607,28 @@ if [ "$apMode" != "non" ] ; then
    if [ -z "$ourIP" ] ; then
       action "Acquiring an IP Address" "dhclient $interface" $verbose $diagnostics "true" $debug
       sleep 3
-      ourIP=$(ifconfig $interface | awk '/inet addr/ {split ($2,A,":"); print A[2]}')
-      if [ -z "$ourIP" ] ; then
-         echo -e "\e[00;31m[-]\e[00m IP Problem. Haven't got a IP address on $interface. Try running the script again, once you have!"  1>&2
-         command=$(ps aux | grep $interface | awk '!/grep/ && !/awk/ && !/fakeAP_pwn/ {print $2}' | while read line; do echo -n "$line "; done | awk '{print}')
-         if [ -n "$command" ] ; then
-            kill $command # Kill dhclient on the internet interface after it fails to get ip, to prevent errors in restarting the script
-         fi
-         cleanup
+      command=$(ifconfig $interface | awk '/inet addr/ {split ($2,A,":"); print A[2]}')
+      if [ -z "$command" ] ; then
+         echo -e "\e[00;31m[-]\e[00m IP Problem. Haven't got a IP address on $interface."  1>&2
+         echo -e "\e[01;33m[i]\e[00m Switching apMode to: non (No Internet access after infection)"
+         apMode="non"
+         #command=$(ps aux | grep $interface | awk '!/grep/ && !/awk/ && !/fakeAP_pwn/ {print $2}' | while read line; do echo -n "$line "; done | awk '{print}')
+         #if [ -n "$command" ] ; then
+         #   kill $command # Kill dhclient on the internet interface after it fails to get ip, to prevent errors in restarting the script
+         #fi
+         #cleanup
+      else
+         ourIP=$command
       fi
-      gatewayIP=$(route -n | awk '/^0.0.0.0/ {getline; print $2}')
       command=$(route -n | awk '/^0.0.0.0/ {getline; print $2}')
       if [ "$command" == "" ] ; then
          echo -e "\e[00;31m[-]\e[00m Gateway IP Problem. Can't detect the gateway on $interface."  1>&2
-         cleanup
+         #cleanup
+         echo -e "\e[01;33m[i]\e[00m Switching apMode to: non (No Internet access after infection)"
+         apMode="non"
+         gatewayIP=10.0.0.1 # For DHCP
+      else
+         gatewayIP=$command
       fi
    fi
 else
