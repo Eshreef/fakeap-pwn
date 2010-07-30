@@ -1,6 +1,6 @@
 #!/bin/bash                                                                                    #
 # (C)opyright 2010 - g0tmi1k & joker5bb                                                        #
-# fakeAP_pwn.sh v0.3 (Beta-#69 2010-07-30)                                                     #
+# fakeAP_pwn.sh v0.3 (Beta-#70 2010-07-30)                                                     #
 #---Important----------------------------------------------------------------------------------#
 # Make sure to copy "www": cp -rf www/* /var/www/fakeAP_pwn                                    #
 # The VNC password is "g0tmi1k" (without "")                                                   #
@@ -68,9 +68,9 @@ verbose=0
 
 #---Variables----------------------------------------------------------------------------------#
 gatewayIP=$(route -n | awk '/^0.0.0.0/ {getline; print $2}')
-    ourIP=$(ifconfig $interface | awk '/inet addr/ {split ($2,A,":"); print A[2]}')
+    ourIP="127.0.0.1" # 10.0.0.1?
      port=$(shuf -i 2000-65000 -n 1)
-  version="0.3 (Beta-#69)"
+  version="0.3 (Beta-#70)"
       www="${www%/}"
 trap 'cleanup interrupt' 2 # Interrupt - "Ctrl + C"
 
@@ -120,9 +120,9 @@ function cleanup() {
       echo 0 > /proc/sys/net/ipv4/ip_forward
    fi
    # ubuntu fixes
-   command="service network-manager start"
-   if [ "$verbose" == "2" ] ; then echo "Command: $command" ; fi; if [ "$diagnostics" == "true" ] ; then echo "$command" >> fakeAP_pwn.output; fi
-   $xterm -geometry 75x8+100+0 -T "fakeAP_pwn v$version - Starting 'network-manager'" -e "$command" # Start network-manager
+   #command="service network-manager start"
+   #if [ "$verbose" == "2" ] ; then echo "Command: $command" ; fi; if [ "$diagnostics" == "true" ] ; then echo "$command" >> fakeAP_pwn.output; fi
+   #$xterm -geometry 75x8+100+0 -T "fakeAP_pwn v$version - Starting 'network-manager'" -e "$command" # Start network-manager
    if [ -e /etc/apparmor.d/usr.sbin.dhcpd3.bkup ]; then mv -f /etc/apparmor.d/usr.sbin.dhcpd3.bkup /etc/apparmor.d/usr.sbin.dhcpd3; fi # Fixes folder persmissions
 
    echo -e "\e[01;36m[>]\e[00m Done! (= Have you... g0tmi1k?"
@@ -280,12 +280,13 @@ if [ "$apMode" != "non" ] ; then
    if [ "$interface" == "" ] ; then echo -e "\e[00;31m[-]\e[00m interface can't be blank" 1>&2; cleanup; fi
    if [ "$interface" == "$wifiInterface" ] ; then echo -e "\e[00;31m[-]\e[00m interface and wifiInterface can't be the same!" 1>&2; cleanup; fi
    if [ "$verbose" != "0" ] || [ "$diagnostics" == "true" ] || [ "$debug" == "true" ] ; then echo -e "\e[01;34m[i]\e[00m Testing internet connection"; fi
-   command=$( ping -I $interface -c 1 google.com > /dev/null)
-   if ! $command > /dev/null 2>&1; then
+   command=$( ping -I $interface -c 1 google.com 2>/dev/null)
+   if [ ! $command ]; then
       echo -e "\e[00;31m[-]\e[00m Couldn't find a internet connection."
       echo -e "\e[01;33m[i]\e[00m Switching apMode to: Non"
       apMode="non"
    fi
+   ourIP=$(ifconfig $interface | awk '/inet addr/ {split ($2,A,":"); print A[2]}')
 fi
 
 if [ "$apType" == "airbase-ng" ] ; then
@@ -612,9 +613,9 @@ $xterm -geometry 75x8+100+0 -T "fakeAP_pwn v$version - Killing 'Apache2 Service'
 command="/etc/init.d/wicd stop"
 if [ "$verbose" == "2" ] ; then echo "Command: $command" ; fi; if [ "$diagnostics" == "true" ] ; then echo "$command" >> fakeAP_pwn.output; fi
 $xterm -geometry 75x8+100+0 -T "fakeAP_pwn v$version - Killing 'wicd Service'"    -e "$command" # Stopping wicd to prevent channel hopping
-command="service network-manager stop"
-if [ "$verbose" == "2" ] ; then echo "Command: $command" ; fi; if [ "$diagnostics" == "true" ] ; then echo "$command" >> fakeAP_pwn.output; fi
-$xterm -geometry 75x8+100+0 -T "fakeAP_pwn v$version - Killing 'network-manager'" -e "$command" # Stop network-manager (Ubuntu)
+#command="service network-manager stop"
+#if [ "$verbose" == "2" ] ; then echo "Command: $command" ; fi; if [ "$diagnostics" == "true" ] ; then echo "$command" >> fakeAP_pwn.output; fi
+#$xterm -geometry 75x8+100+0 -T "fakeAP_pwn v$version - Killing 'network-manager'" -e "$command" # Stop network-manager (Ubuntu)
 
 #----------------------------------------------------------------------------------------------#
 echo -e "\e[01;32m[>]\e[00m Setting up wireless card..."
@@ -659,12 +660,18 @@ if [ "$apType" == "airbase-ng" ] ; then
    fi
 fi
 
-#command=$(aireplay-ng --test $monitorInterface)
-#if [ `echo $command | grep "Found 0 APs"` ] ; then echo -e "\e[00;31m[-]\e[00m Couldn't test packet injection" 1>&2;
-#elif ! [ `echo $command | egrep "Injection is working"` ] ; then
-   #echo -e "\e[00;31m[-]\e[00m The monitor interface $monitorInterface, doesn't support packet injecting." 1>&2
-   #cleanup
-#fi
+if [ "$apType" == "airbase-ng" ] ; then
+   command=$(iwconfig $interface 2>/dev/null | grep "802.11" | cut -d" " -f1)
+   if [ $command ]; then # $interface is WiFi. Therefore two WiFi cards...
+      if [ "$verbose" != "0" ] || [ "$diagnostics" == "true" ] || [ "$debug" == "true" ] ; then echo -e "\e[01;32m[>]\e[00m Testing injection..."; fi
+      command=$(aireplay-ng --test $monitorInterface) #-i ???
+      if [ `echo $command | grep "Found 0 APs"` ] ; then echo -e "\e[00;31m[-]\e[00m Couldn't test packet injection" 1>&2;
+      elif ! [ `echo $command | egrep "Injection is working"` ] ; then
+         echo -e "\e[00;31m[-]\e[00m The $monitorInterface, doesn't support packet injecting." 1>&2
+         #cleanup
+      fi
+   fi
+fi
 
 #----------------------------------------------------------------------------------------------#
 if [ "$apType" == "airbase-ng" ] ; then
@@ -1147,7 +1154,6 @@ fi
 #----------------------------------------------------------------------------------------------#
 echo -e "\e[01;32m[>]\e[00m Starting: Fake access point"
 if [ "$apType" == "airbase-ng" ] ; then
-
    loopMain="False"
    i="1"
    for i in {1..3} ; do # Main Loop
@@ -1171,14 +1177,16 @@ if [ "$apType" == "airbase-ng" ] ; then
       if [ "$command" != "at0" ] ; then
          echo -e "\e[00;31m[-]\e[00m Couldn't create the access point's interface." 1>&2
       else
+         #if [ "$diagnostics" != "true" ] || [ "$debug" != "true" ]  ; then loopMain="True"; break; fi  # Not in the correct mode
+         if [ "$apMode" != "non" ] ; then loopMain="True"; break; fi                 # Not using $interface therefore can't test.
          command=$(iwconfig $interface 2>/dev/null | grep "802.11" | cut -d" " -f1)
-         if [ ! $command ]; then loopMain="True"; break; fi # $interface isnt WiFi, therefore cant test.
+         if [ ! $command ]; then loopMain="True"; break; fi                          # $interface isnt WiFi, therefore can't test.
          echo -e "\e[01;33m[i]\e[00m Attempt #$i to detect the fake access point."
          loopSub="False"
          x="1"
          for x in {1..5} ; do # Sub loop
             echo -e "\e[01;33m[i]\e[00m Try #$x scanning for the fake access point."
-            testAP $ESSID $wifiInterface
+            testAP $ESSID $interface
             return_val=$?
             if [ "$return_val" -eq "0" ] ; then loopSub="True"; break; # Sub loop
             elif [ "$return_val" -eq "1" ] ; then echo -e "\e[00;31m[-]\e[00m Coding error";
