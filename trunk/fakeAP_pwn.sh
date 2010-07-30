@@ -256,15 +256,6 @@ function action() {
 #----------------------------------------------------------------------------------------------#
 echo -e "\e[01;36m[*]\e[00m fakeAP_pwn v$version"
 
-if [ -e /tmp/fakeAP_pwn.wkv ] ; then rm /tmp/fakeAP_pwn.wkv; fi
-if [ -e fakeAP_pwn.log ] ;   then rm fakeAP_pwn.log; fi
-
-echo "fakeAP_pwn v$version
-$(date)
----------------------------------------------------------------------------------------------" > fakeAP_pwn.log
-
-if [ "$(id -u)" != "0" ] ; then echo -e "\e[00;31m[-]\e[00m Not a superuser." 1>&2; cleanup user; fi
-
 while getopts "i:w:m:e:c:y:o:p:b:h:t:rz:a:xdDvVu?" OPTIONS; do
   case ${OPTIONS} in
     i     ) export interface=$OPTARG;;
@@ -292,14 +283,27 @@ while getopts "i:w:m:e:c:y:o:p:b:h:t:rz:a:xdDvVu?" OPTIONS; do
   esac
 done
 
+#----------------------------------------------------------------------------------------------#
+echo -e "\e[01;32m[>]\e[00m Checking environment..."
+
+if [ "$(id -u)" != "0" ] ; then echo -e "\e[00;31m[-]\e[00m Not a superuser." 1>&2; cleanup user; fi
+
+if [ -e /tmp/fakeAP_pwn.wkv ] ; then rm /tmp/fakeAP_pwn.wkv; fi
+if [ -e fakeAP_pwn.log ] ;   then rm fakeAP_pwn.log; fi
+
+if [ "$diagnostics" == "true" ] ; then
+   echo "fakeAP_pwn v$version
+$(date)
+---------------------------------------------------------------------------------------------" > fakeAP_pwn.log
+fi
+
 if [ "$debug" == "true" ] ; then
    echo -e "\e[01;33m[i]\e[00m Debug Mode\e[00m"
 elif [ "$diagnostics" == "true" ] ; then
    echo -e "\e[01;34m[i]\e[00m Diagnostics Mode\e[00m"
 fi
 
-#----------------------------------------------------------------------------------------------#
-echo -e "\e[01;32m[>]\e[00m Checking environment..."
+
 
 if [ "$wifiInterface" == "" ] ; then echo -e "\e[00;31m[-]\e[00m wifiInterface can't be blank" 1>&2; cleanup; fi
 command=$(iwconfig $wifiInterface 2>/dev/null | grep "802.11" | cut -d" " -f1)
@@ -365,8 +369,7 @@ if [ "$debug" == "true" ] || [ "$verbose" != "0" ] ; then
 fi
 
 if [ "$diagnostics" == "true" ] ; then
-    echo "
--Settings------------------------------------------------------------------------------------
+    echo "-Settings------------------------------------------------------------------------------------
         interface=$interface
     wifiInterface=$wifiInterface
  monitorInterface=$monitorInterface
