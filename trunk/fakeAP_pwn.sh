@@ -1,6 +1,6 @@
 #!/bin/bash                                                                                    #
 # (C)opyright 2010 - g0tmi1k & joker5bb                                                        #
-# fakeAP_pwn.sh v0.3 (Beta-#73 2010-07-30)                                                     #
+# fakeAP_pwn.sh v0.3 (Beta-#74 2010-07-30)                                                     #
 #---Important----------------------------------------------------------------------------------#
 # Make sure to copy "www": cp -rf www/* /var/www/fakeAP_pwn                                    #
 # The VNC password is "g0tmi1k" (without "")                                                   #
@@ -70,7 +70,7 @@ verbose=0
 gatewayIP=$(route -n | awk '/^0.0.0.0/ {getline; print $2}')
     ourIP="127.0.0.1" # 10.0.0.1?
      port=$(shuf -i 2000-65000 -n 1)
-  version="0.3 (Beta-#73)"
+  version="0.3 (Beta-#74)"
       www="${www%/}"
 trap 'cleanup interrupt' 2 # Interrupt - "Ctrl + C"
 
@@ -227,11 +227,11 @@ function action() {
    if [ "$5" != "true" ] && [ "$5" != "false" ] ; then error="5"; fi # Coding error
    if [ "$6" != "true" ] && [ "$6" != "false" ] ; then error="6"; fi # Coding error
    if [ "$error" == "free" ] ; then
-      xterm="xterm"
+      xterm="xterm" #Defaults
       command=$2
       x="100"
       y="0"
-      lines=15
+      lines="15"
       if [ "$6" == "true" ] ; then xterm="$xterm -hold" ; fi
       if [ "$3" == "2" ] ; then echo "Command: $command" ; fi
       if [ "$4" == "true" ] ; then
@@ -245,7 +245,6 @@ function action() {
       $xterm -geometry 75x$lines+$x+$y -T "fakeAP_pwn v$version - $1" -e "$command"
       return 0
    else
-#print error commands
       echo -e "\e[00;31m[-]\e[00m Error running command. Error code: $error"
       echo "---------------------------------------------------------------------------------------------
 -->ERROR: action $1 , $2 , $3 , $4 , $5 , $6 , $7 , $8 , $9" >> fakeAP_pwn.log;
@@ -302,8 +301,6 @@ if [ "$debug" == "true" ] ; then
 elif [ "$diagnostics" == "true" ] ; then
    echo -e "\e[01;34m[i]\e[00m Diagnostics Mode\e[00m"
 fi
-
-
 
 if [ "$wifiInterface" == "" ] ; then echo -e "\e[00;31m[-]\e[00m wifiInterface can't be blank" 1>&2; cleanup; fi
 command=$(iwconfig $wifiInterface 2>/dev/null | grep "802.11" | cut -d" " -f1)
@@ -397,10 +394,10 @@ if [ "$diagnostics" == "true" ] ; then
     echo -e "\e[01;34m[i]\e[00m Finding kernal version"
     uname -a >> fakeAP_pwn.log
     echo "-Hardware--------------------------------" >> fakeAP_pwn.log
-    echo -e "\e[01;34m[i]\e[00m Finding hardware infomation"
+    echo -e "\e[01;34m[i]\e[00m Detecting hardware"
     lspci -knn >> fakeAP_pwn.log
     echo "-Network---------------------------------" >> fakeAP_pwn.log
-    echo -e "\e[01;34m[i]\e[00m Finding network infomation"
+    echo -e "\e[01;34m[i]\e[00m Testing network"
     ifconfig >> fakeAP_pwn.log
     echo "-----------------------------------------" >> fakeAP_pwn.log
     ifconfig -a >> fakeAP_pwn.log
