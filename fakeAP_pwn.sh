@@ -1,6 +1,6 @@
 #!/bin/bash                                                                                    #
 # (C)opyright 2010 - g0tmi1k & joker5bb                                                        #
-# fakeAP_pwn.sh v0.3 (Beta-#82 2010-08-05)                                                     #
+# fakeAP_pwn.sh v0.3 (Beta-#83 2010-08-06)                                                     #
 #---Important----------------------------------------------------------------------------------#
 # Make sure to copy "www": cp -rf www/* /var/www/fakeAP_pwn                                    #
 # The VNC password is "g0tmi1k" (without "")                                                   #
@@ -70,7 +70,7 @@ verbose=0
 gatewayIP=$(route -n | awk '/^0.0.0.0/ {getline; print $2}')
     ourIP="127.0.0.1"                # 10.0.0.1?
      port=$(shuf -i 2000-65000 -n 1) # Random port each time
-  version="0.3 (Beta-#82)"
+  version="0.3 (Beta-#83)"
       www="${www%/}"                 # Remove trailing slash
 trap 'cleanup interrupt' 2           # Interrupt - "Ctrl + C"
 
@@ -1016,12 +1016,11 @@ fi
 
 if [ -e /tmp/fakeAP_pwn.dhcp ] ; then rm /tmp/fakeAP_pwn.dhcp; fi # DHCP script
 echo "# fakeAP_pwn.dhcp v$version
-ddns-update-style interim;
+ddns-update-style none;
 ignore client-updates; # Ignore all client requests for DDNS update
 authoritative;
 default-lease-time 86400; # 24 hours
 max-lease-time 172800; # 48 hours
-send fqdn.server-updates false;
 log-facility local7;
 
 subnet 10.0.0.0 netmask 255.255.255.0 {
