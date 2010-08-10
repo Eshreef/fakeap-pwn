@@ -1,6 +1,6 @@
 #!/bin/bash                                                                                    #
 # (C)opyright 2010 - g0tmi1k & joker5bb                                                        #
-# fakeAP_pwn.sh v0.3 (Beta-#85 2010-08-08)                                                     #
+# fakeAP_pwn.sh v0.3 (Beta-#86 2010-08-10)                                                     #
 #---Important----------------------------------------------------------------------------------#
 # Make sure to copy "www": cp -rf www/* /var/www/fakeAP_pwn                                    #
 # The VNC password is "g0tmi1k" (without "")                                                   #
@@ -70,7 +70,7 @@ verbose=0
 gatewayIP=$(route -n | awk '/^0.0.0.0/ {getline; print $2}')
     ourIP="127.0.0.1"                # 10.0.0.1?
      port=$(shuf -i 2000-65000 -n 1) # Random port each time
-  version="0.3 (Beta-#85)"
+  version="0.3 (Beta-#86)"
       www="${www%/}"                 # Remove trailing slash
 trap 'cleanup interrupt' 2           # Interrupt - "Ctrl + C"
 
@@ -1278,14 +1278,12 @@ if [ $command != "1" ] ; then
 fi
 if [ "$apMode" == "normal" ] ; then
    iptables --table nat --append POSTROUTING --out-interface $interface --jump MASQUERADE
-   iptables --append FORWARD --in-interface $apInterface --jump ACCEPT
-   iptables --table nat --append PREROUTING --jump DNAT --to-destination $gatewayIP
-   #iptables --table nat --append PREROUTING --proto udp --destination-port 53 --jump DNAT --to-destination $gatewayIP #only DNS
-   #iptables --table nat --append PREROUTING --proto tcp --destination-port 53 --jump DNAT --to-destination $gatewayIP #tcp and udp can be used to transfer dns
+   iptables --append FORWARD --out-interface $interface --jump ACCEPT
+   iptables --append FORWARD -m conntrack --ctstate ESTABLISHED,RELATED --in-interface $interface -j ACCEPT
+   iptables -A INPUT -m conntrack --ctstate NEW -p tcp --dport 80 -j LOG --log-prefix "NEW_HTTP_CONN: " #logging
    iptables -A INPUT -m iprange --src-range 10.0.0.150-10.0.0.250 --in-interface $apInterface --destination $gatewayIP -j DROP # protect our internet gateway
 elif [ "$apMode" == "non" ] || [ "$apMode" == "transparent" ] ; then
-   #iptables -A INPUT -p udp -i $apInterface --dport 53 -j ACCEPT
-   #iptables -A INPUT -p tcp -i $apInterface --dport 53 -j ACCEPT
+   #iptables -A INPUT -i $apInterface -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT # Allow UDP, DNS and Passive FTP
    #iptables -A INPUT -p tcp -i $apInterface --dport 80 -j ACCEPT
    #iptables -A INPUT -p tcp -i $apInterface --dport 443 -j ACCEPT
    #iptables -A INPUT -p tcp -i $apInterface --dport 4564 -j ACCEPT
@@ -1415,10 +1413,8 @@ fi
         cleanup
       fi
       iptables --table nat --append POSTROUTING --out-interface $interface --jump MASQUERADE
-      iptables --append FORWARD --in-interface $apInterface --jump ACCEPT
-      iptables --table nat --append PREROUTING --jump DNAT --to-destination $gatewayIP
-      #iptables --table nat --append PREROUTING --proto udp --destination-port 53 --jump DNAT --to-destination $gatewayIP
-      #iptables --table nat --append PREROUTING --proto tcp --destination-port 53 --jump DNAT --to-destination $gatewayIP
+      iptables --append FORWARD --out-interface $interface --jump ACCEPT
+      iptables --append FORWARD -m conntrack --ctstate ESTABLISHED,RELATED --in-interface $interface -j ACCEPT
       iptables --append INPUT -m iprange --src-range 10.0.0.150-10.0.0.250 --in-interface $apInterface --destination $gatewayIP -j DROP  # Protect the gateway
    fi
 
