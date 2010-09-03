@@ -1699,3 +1699,4 @@ cleanup clean
 # Check: VNC
 # Use: netsh advfirewall firewall add rule name="allow TightVNC" dir=in program="C:\\winvnc.exe" security=authenticate action=allow
 # Use: vnc.rb in metasploit?
+# Use: Re look at index.php - dont use http://10.0.0.1/[Filename]
