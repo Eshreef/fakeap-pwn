@@ -1,6 +1,6 @@
-#!/bin/bash                                                                                    #
+#!/bin/bash
 #----------------------------------------------------------------------------------------------#
-#fakeAP_pwn.sh v0.3 (#101 2010-09-03)                                                          #
+#fakeAP_pwn.sh v0.3 (#102 2010-09-03)                                                          #
 # (C)opyright 2010 - g0tmi1k & joker5bb                                                        #
 #---License------------------------------------------------------------------------------------#
 #  This program is free software: you can redistribute it and/or modify it under the terms     #
@@ -65,7 +65,7 @@ verbose="0"
 gatewayIP=$(route -n | awk '/^0.0.0.0/ {getline; print $2}')
     ourIP="10.0.0.1"
      port=$(shuf -i 2000-65000 -n 1) # Random port each time
-  version="0.3 (#101)"               # Version
+  version="0.3 (#102)"               # Version
       www="${www%/}"                 # Remove trailing slash
     debug="false"                    # Windows don't close, shows extra stuff
   logFile="fakeAP_pwn.log"           # filename of output
@@ -133,7 +133,7 @@ function help() {
    echo "(C)opyright 2010 g0tmi1k & joker5bb ~ http://g0tmi1k.blogspot.com
 
  Usage: bash fakeAP_pwn.sh -i [interface] -w [interface] -t [interface] -e [essid] -c [channel]
-              -y [airbase-ng/hostapd] -m [normal/transparent/non] -p [sbd/vnc/other] -b [/path]
+              -y [airbase-ng/hostapd] -m [normal/transparent/non/flip] -p [sbd/vnc/other] -b [/path]
               -h [/path] -q [MTU] -r (-z / -a [mac address]) -e -d -v -V [-u] [-?]
 
  Options:
@@ -174,23 +174,25 @@ function help() {
 
 
  Known issues:
-   -\"Odd\" SSID
-        > Airbase-ng doesn't always work ...Re-run the script.
+   -\"Odd\"/Hidden SSID
+        > airbase-ng doesn't always work... Re-run the script
         > Try hostap
 
    -Can't connect
-        > Airbase-ng doesn't always work ...Re-run the script.
+        > airbase-ng doesn't always work... Re-run the script
         > Try hostap
+        > Try using two WiFi cards with  Diagnostics mode enabled
         > Target is too close/far away
-        > Window 7 connects better than Windows XP
+        > I've found \"Window 7\" connects better/more than \"Windows XP\"
 
    -No IP
         > Use latest version of dhcp3-server
+        > Re-run the script
 
    -Slow
-        > Don't use in a virtual machine
+        > Don't run/target a virtual machine
         > Try hostap
-        > Try a different MTU value.
+        > Try a different MTU value
         > Your hardware (Example, 802.11n doesn't work too well)
 "
    exit 1
@@ -199,7 +201,7 @@ function update() { # update
    if [ -e "/usr/bin/svn" ] ; then
       display action "Checking for an update..." $diagnostics
       update=$(svn info http://fakeap-pwn.googlecode.com/svn/ | grep "Revision:" |cut -c11-)
-      if [ "$version" != "0.3 (Beta-#$update)" ] ; then
+      if [ "$version" != "0.3 (#$update)" ] ; then
          display info "Updating..." $diagnostics
          svn export -q --force http://fakeap-pwn.googlecode.com/svn/trunk/fakeAP_pwn.sh fakeAP_pwn.sh
          svn export -q --force http://fakeap-pwn.googlecode.com/svn/trunk/www/index.php $www/index.php
