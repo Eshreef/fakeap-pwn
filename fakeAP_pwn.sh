@@ -1,6 +1,6 @@
 #!/bin/bash
 #----------------------------------------------------------------------------------------------#
-#fakeAP_pwn.sh v0.3 (#102 2010-09-03)                                                          #
+#fakeAP_pwn.sh v0.3 (#103 2010-09-12)                                                          #
 # (C)opyright 2010 - g0tmi1k & joker5bb                                                        #
 #---License------------------------------------------------------------------------------------#
 #  This program is free software: you can redistribute it and/or modify it under the terms     #
@@ -65,7 +65,7 @@ verbose="0"
 gatewayIP=$(route -n | awk '/^0.0.0.0/ {getline; print $2}')
     ourIP="10.0.0.1"
      port=$(shuf -i 2000-65000 -n 1) # Random port each time
-  version="0.3 (#102)"               # Version
+  version="0.3 (#103)"               # Version
       www="${www%/}"                 # Remove trailing slash
     debug="false"                    # Windows don't close, shows extra stuff
   logFile="fakeAP_pwn.log"           # filename of output
@@ -1331,6 +1331,7 @@ if [ "$apType" == "hostapd" ] ; then
    if [ -e "$path" ] ; then rm "$path"; fi
    echo "# fakeAP_pwn.hostapd v$version
 interface=$apInterface
+driver=nl80211
 logger_syslog=-1
 logger_syslog_level=2
 logger_stdout=-1
