@@ -1,6 +1,6 @@
 #!/bin/bash
 #----------------------------------------------------------------------------------------------#
-#fakeAP_pwn.sh v0.3 (#103 2010-09-12)                                                          #
+#fakeAP_pwn.sh v0.3 (#104 2010-09-15)                                                          #
 # (C)opyright 2010 - g0tmi1k & joker5bb                                                        #
 #---License------------------------------------------------------------------------------------#
 #  This program is free software: you can redistribute it and/or modify it under the terms     #
@@ -65,7 +65,7 @@ verbose="0"
 gatewayIP=$(route -n | awk '/^0.0.0.0/ {getline; print $2}')
     ourIP="10.0.0.1"
      port=$(shuf -i 2000-65000 -n 1) # Random port each time
-  version="0.3 (#103)"               # Version
+  version="0.3 (#104)"               # Version
       www="${www%/}"                 # Remove trailing slash
     debug="false"                    # Windows don't close, shows extra stuff
   logFile="fakeAP_pwn.log"           # filename of output
@@ -1558,10 +1558,11 @@ if [ "$mode" != "normal" ] ; then
    display action "Starting: Web server" $diagnostics
    if [ ! -e "/etc/ssl/private/ssl-cert-snakeoil.key" ] ; then
       display error "Need to renew certificate" $diagnostics ;
-      openssl genrsa -out server.key 1024
-      openssl req -new -x509 -key server.key -out server.pem -days 1826
-      mv -f "server.key" "/etc/ssl/private/ssl-cert-snakeoil.key"
-      mv -f "server.pem" "/etc/ssl/certs/ssl-cert-snakeoil.pem"
+      make-ssl-cert generate-default-snakeoil --force-overwrite
+      #openssl genrsa -out server.key 1024
+      #openssl req -new -x509 -key server.key -out server.pem -days 1826
+      #mv -f "server.key" "/etc/ssl/private/ssl-cert-snakeoil.key"
+      #mv -f "server.pem" "/etc/ssl/certs/ssl-cert-snakeoil.pem"
    fi
    action "Web Sever" "/etc/init.d/apache2 start && ls /etc/apache2/sites-available/ | xargs a2dissite && a2ensite fakeAP_pwn && a2enmod ssl && a2enmod php5 && /etc/init.d/apache2 reload" $verbose $diagnostics "true" & #dissable all sites and only enable the fakeAP_pwn one # Don't wait, do the next command
    sleep 2
