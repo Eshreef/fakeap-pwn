@@ -1,6 +1,6 @@
 #!/bin/bash
 #----------------------------------------------------------------------------------------------#
-#fakeAP_pwn.sh v0.3 (#105 2010-09-16)                                                          #
+#fakeAP_pwn.sh v0.3 (#107 2010-09-16)                                                          #
 # (C)opyright 2010 - g0tmi1k & joker5bb                                                        #
 #---License------------------------------------------------------------------------------------#
 #  This program is free software: you can redistribute it and/or modify it under the terms     #
@@ -62,7 +62,7 @@ diagnostics="false"
 verbose="0"
 
 #---Variables----------------------------------------------------------------------------------#
-  version="0.3 (#105)"               # Version
+  version="0.3 (#107)"               # Version
   gateway=$(route -n | grep $interface | awk '/^0.0.0.0/ {getline; print $2}')
     ourIP="10.0.0.1"
      port=$(shuf -i 2000-65000 -n 1) # Random port each time
