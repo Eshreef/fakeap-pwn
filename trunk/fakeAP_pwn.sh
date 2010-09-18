@@ -1,6 +1,6 @@
 #!/bin/bash
 #----------------------------------------------------------------------------------------------#
-#fakeAP_pwn.sh v0.3 (#111 2010-09-18)                                                          #
+#fakeAP_pwn.sh v0.3 (#112 2010-09-18)                                                          #
 # (C)opyright 2010 - g0tmi1k & joker5bb                                                        #
 #---License------------------------------------------------------------------------------------#
 #  This program is free software: you can redistribute it and/or modify it under the terms     #
@@ -61,7 +61,7 @@ verbose="0"
 #---Variables----------------------------------------------------------------------------------#
 mtuMonitor="1800"                     # *Some cards will not support changing this value*
      mtuAP="1400"                     # If you're having "timing out" problems, change this
-   version="0.3 (#111)"               # Version
+   version="0.3 (#112)"               # Version
    gateway=$(route -n | grep $interface | awk '/^0.0.0.0/ {getline; print $2}')
      ourIP="10.0.0.1"
       port=$(shuf -i 2000-65000 -n 1) # Random port each time
@@ -759,7 +759,7 @@ fi
 display action "Configuring: Environment"
 
 #----------------------------------------------------------------------------------------------#
-if [ "$wifiDriver" == "rth8187" ] ; then #http://www.backtrack-linux.org/forums/backtrack-howtos/31403-howto-rtl8187-backtrack-r1-monitor-mode-unknown-error-132-a.html
+if [ "$wifiDriver" == "rtl8187" ] ; then #http://www.backtrack-linux.org/forums/backtrack-howtos/31403-howto-rtl8187-backtrack-r1-monitor-mode-unknown-error-132-a.html
    action "Changing drivers" "rmmod rtl8187 ; rmmod mac80211 ; modprobe r8187"
 fi
 
