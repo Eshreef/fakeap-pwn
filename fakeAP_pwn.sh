@@ -524,8 +524,10 @@ if [ "$diagnostics" == "true" ] ; then
    fi
 fi
 if [ "$mode" != "non" ] ; then
-   if [ "$verbose" != "0" ] || [ "$diagnostics" == "true" ] || [ "$debug" == "true" ] ; then display diag "Testing: Internet connection" ; fi
+   if [ "$verbose" != "0" ] || [ "$diagnostics" == "true" ] || [ "$debug" == "true" ] ; then 
+   display diag "Testing: Internet connection" 
    command=$(ping -I $interface -c 1 google.com >/dev/null)
+   fi
    if ! eval $command ; then
       display error "Internet access: Failed."
       display info "Switching mode: non"
