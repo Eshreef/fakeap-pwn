@@ -1,6 +1,6 @@
 #!/bin/bash
 #----------------------------------------------------------------------------------------------#
-#fakeAP_pwn.sh v0.3 (#118 2010-10-08)                                                          #
+#fakeAP_pwn.sh v0.3 (#120 2010-10-08)                                                          #
 # (C)opyright 2010 - g0tmi1k & joker5bb                                                        #
 #---License------------------------------------------------------------------------------------#
 #  This program is free software: you can redistribute it and/or modify it under the terms     #
@@ -68,7 +68,7 @@ monitorInterface="mon0"
      displayMore="false"                    # Gives more details on whats happening
            debug="false"                    # Doesn't delete files, shows more on screen etc
          logFile="fakeAP_pwn.log"           # Filename of output
-             svn="118"                      # SVN Number
+             svn="120"                      # SVN Number
          version="0.3 (#$svn)"              # Program version
 trap 'cleanUp interrupt' 2                  # Captures interrupt signal (Ctrl + C)
 
