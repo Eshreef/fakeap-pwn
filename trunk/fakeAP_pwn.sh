@@ -67,8 +67,8 @@ extras="false"
      displayMore="false"                    # Gives more details on whats happening
            debug="false"                    # Doesn't delete files, shows more on screen etc
          logFile="fakeAP_pwn.log"           # Filename of output
-             svn="122"                      # SVN Number
-         version="0.3 (#$svn)"              # Program version
+             svn="123"                      # SVN Number
+         version="0.3 (#122)"               # Program version
 trap 'cleanUp interrupt' 2                  # Captures interrupt signal (Ctrl + C)
 
 #----Functions---------------------------------------------------------------------------------#
@@ -197,7 +197,7 @@ function help() { #help
  Options:
    -i [interface]                    ---  Internet Interface e.g. $interface
    -w [interface]                    ---  WiFi Interface e.g. $wifiInterface
-   -t [interface]                    ---  Monitor Interface e.g. $monitorInterface
+   -t [interface]                    ---  Monitor Interface e.g. mon0
 
    -e [ESSID]                        ---  ESSID (WiFi Name) e.g. $essid
    -c [channel]                      ---  Channel for the Acess Point e.g. $channel
@@ -428,12 +428,9 @@ display action "Analyzing: Environment"
 if [ -z "$wifiInterface" ] ; then display error "wifiInterface can't be blank" 1>&2 ; cleanUp ; fi
 if [ "$mode" != "non" ] && [ -z  "$interface" ] ; then display error "interface can't be blank" 1>&2 ; cleanUp ; fi
 if [ "$mode" != "non" ] && [ "$interface" == "$wifiInterface" ] ; then display error "interface and wifiInterface can't be the same!" 1>&2 ; cleanUp ; fi
-if [ "$apType" == "airbase-ng" ] && [ "$monitorInterface" == "$interface" ] ; then display error "monitorInterface and interface can't be the same!" 1>&2 ; cleanUp ; fi
-if [ "$apType" == "airbase-ng" ] && [ "$monitorInterface" == "$wifiInterface" ] ; then display error "monitorInterface and wifiInterface can't be the same!" 1>&2 ; cleanUp ; fi
 if [ "$mode" != "normal" ] && [ "$mode" != "transparent" ] && [ "$mode" != "non" ] && [ "$mode" != "flip" ] ; then display error "mode ($mode) isn't correct" 1>&2 ; cleanUp; fi
 if [ "$mode" != "normal" ] && [ "$mode" != "flip" ] && [ "$payload" != "sbd" ] && [ "$payload" != "vnc" ] && [ "$payload" != "wkv" ] && [ "$payload" != "other" ] ; then display error "payload ($payload) isn't correct" 1>&2 ; cleanUp ; fi
 
-if [ "$apType" == "airbase-ng" ] && [ -z "$monitorInterface" ] ; then display error "monitorInterface is blank" 1>&2 ; fi # Trys to detect it later
 if [ -z "$essid" ] ; then display error "essid is blank" 1>&2 ; essid="Free-WiFi" ; fi
 if [ "$channel" -lt "0" ] || [ "$channel" -gt "13" ] ; then display error "channel has to be between 1 and 13" 1>&2 ; channel="1" ; fi
 if [ "$apType" != "airbase-ng" ] && [ "$apType" != "hostapd" ] ; then display error "apType ($apType) isn't correct" 1>&2 ; apType="airbase-ng" ; fi
