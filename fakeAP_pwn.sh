@@ -1,6 +1,6 @@
 #!/bin/bash
 #----------------------------------------------------------------------------------------------#
-#fakeAP_pwn.sh v0.3 (#122 2010-10-09)                                                          #
+#fakeAP_pwn.sh v0.3 (#124 2010-10-09)                                                          #
 # (C)opyright 2010 - g0tmi1k & joker5bb                                                        #
 #---License------------------------------------------------------------------------------------#
 #  This program is free software: you can redistribute it and/or modify it under the terms     #
@@ -67,8 +67,8 @@ extras="false"
      displayMore="false"                    # Gives more details on whats happening
            debug="false"                    # Doesn't delete files, shows more on screen etc
          logFile="fakeAP_pwn.log"           # Filename of output
-             svn="123"                      # SVN Number
-         version="0.3 (#122)"               # Program version
+             svn="124"                      # SVN Number
+         version="0.3 (#$svn)"               # Program version
 trap 'cleanUp interrupt' 2                  # Captures interrupt signal (Ctrl + C)
 
 #----Functions---------------------------------------------------------------------------------#
@@ -453,7 +453,7 @@ if [ "$diagnostics" != "true" ] && [ "$diagnostics" != "false" ] ; then display 
 if [ "$verbose" != "0" ] && [ "$verbose" != "1" ] && [ "$verbose" != "2" ] ; then display error "verbose ($verbose) isn't correct" 1>&2 ; verbose="false" ; fi
 if [ "$mode" != "non" ] ; then
    if [ "$extras" != "true" ] && [ "$extras" != "false" ] ; then display error "extras ($extras) isn't correct" 1>&2 ; extras="false" ; fi
-   if [ -z "$gateway" ] ; then display error "gateway ($gateway) isn't correct. Using the correct interface?" 1>&2 ; cleanUp ; fi
+   #if [ -z "$gateway" ] ; then display error "gateway ($gateway) isn't correct. Using the correct interface?" 1>&2 ; cleanUp ; fi
    if [ -z "$ourIP" ] ; then display error "ourIP ($ourIP) isn't correct" 1>&2 ; cleanUp ; fi
 fi
 if ( [ "$mode" == "transparent" ] || [ "$mode" == "non" ] ) && [ -z "$port" ] ; then display error "port ($port) isn't correct" 1>&2 ; port="4567" ; fi
