@@ -1,0 +1,1 @@
+This automates the process of forcing the victim to connect to our access point, forcing the victim to download our backdoor before (maybe) allowing them to continue with their internet surfing.
